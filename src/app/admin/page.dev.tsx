@@ -1,8 +1,15 @@
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { AdminApp } from "@/components/admin/AdminApp";
 import { listRepos, type Repo } from "@/lib/admin/github";
+import { isLocalHost } from "@/lib/admin/origin";
 import { readProjects, type Project } from "@/lib/projects";
 
 export default async function AdminPage() {
+  // A page that rebinds its own DNS name to 127.0.0.1 is served under that name, and could read this one (private repo names included).
+  // The routes check Origin and Host for the writes. A GET has no Origin to check, so the page checks Host.
+  if (!isLocalHost((await headers()).get("host"))) notFound();
+
   let data: { repos: Repo[]; projects: Project[] } | undefined;
   let error = "";
   try {
