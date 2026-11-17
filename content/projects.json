@@ -1,5 +1,29 @@
 [
   {
+    "slug": "RetinAI-OcularDiseaseRecognition",
+    "name": "RetinAI",
+    "tagline": "Web app that classifies eye diseases from fundus images plus patient age and sex.",
+    "description": "RetinAI is a web app that helps screen for eye disease. A user uploads a left and a right fundus image, enters the patient's age and sex, and gets a percentage score for eight categories: normal, diabetes, glaucoma, cataract, age-related macular degeneration, hypertension, pathological myopia and other. A built-in chart shows how often each category has been predicted so far. The interface is written in Bosnian.\n\nI built the backend in Python with Flask and the models in Keras. The main classifier takes both eye images stacked into one 6-channel input, reduces it to 3 channels with a 1x1 convolution and passes it through an EfficientNetB0 backbone. A small dense branch for age and sex is merged with the image features before an 8-way sigmoid output. My training script follows the ODIR-5K dataset layout. It uses Adam, checkpointing that lets training resume, early stopping and learning-rate reduction. A second, MobileNetV2-based binary model checks that each upload is actually a retina image, and the app rejects anything else before it predicts.\n\nWhat I would highlight is that I covered the whole workflow, not just the model. The app preprocesses images with OpenCV, stores prediction counts in SQLite and serves them to a Chart.js dashboard. After every 10 valid predictions it starts a background retraining job and blocks new uploads until the job finishes.",
+    "tech": [
+      "Python",
+      "Flask",
+      "Keras",
+      "EfficientNetB0",
+      "MobileNetV2",
+      "OpenCV",
+      "NumPy",
+      "pandas",
+      "scikit-learn",
+      "SQLite",
+      "JavaScript",
+      "jQuery",
+      "Chart.js",
+      "HTML/CSS"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/RetinAI-OcularDiseaseRecognition",
+    "published": true
+  },
+  {
     "slug": "Knjigoteka-RS2",
     "name": "Knjigoteka",
     "tagline": "Bookstore and library system with an ASP.NET Core API, Flutter desktop and mobile apps, and Stripe.",
@@ -19,18 +43,6 @@
     ],
     "repoUrl": "https://github.com/AmerPupo/Knjigoteka-RS2",
     "published": true
-  },
-  {
-    "slug": "Echelon",
-    "name": "Echelon",
-    "tagline": "A 3D first-person game built in Unity and C#.",
-    "description": "Echelon is a 3D first-person game that I made for KGR. It is a Unity project written in C#.",
-    "tech": [
-      "Unity",
-      "C#"
-    ],
-    "repoUrl": "https://github.com/AmerPupo/Echelon",
-    "published": false
   },
   {
     "slug": "portfolio",
@@ -84,6 +96,24 @@
       "Service Workers"
     ],
     "repoUrl": "https://github.com/AmerPupo/CareFall",
+    "published": true
+  },
+  {
+    "slug": "Echelon",
+    "name": "Echelon",
+    "tagline": "A 3D first-person Unity platformer featuring swinging, teleportation, and time-rewind abilities.",
+    "description": "Echelon is a 3D first-person game I built in Unity. The project has a tutorial level, five numbered levels, a main menu, a level-select screen and an options menu. Levels are about movement: the player can jump, dash in the air, slide on slopes, and use pickups that switch the right-mouse-button ability between a grappling-style swing, a throw-and-teleport projectile, and a rewind of the last few seconds of movement.\n\nI wrote the gameplay in C# on a Rigidbody-based controller. A movement state machine (walking, air, dashing, grappling, swinging, rewinding and others) blends speed changes smoothly and keeps momentum after a dash. The swing ability uses a SpringJoint with an aim-assist sphere cast and adjustable cable length. The time rewind records the player's position and camera rotations each frame, then replays them with Lerp and Slerp. The teleport ability records the path of a thrown projectile and moves the player along it. I also added moving platforms that follow waypoints, checkpoints with respawn, and enemies that fire projectiles.\n\nThe part I would highlight is the progress system. A persistence manager finds every object that implements a small save/load interface. It writes level and battery-collectible progress as JSON in the player's data folder, with an optional XOR-based obfuscation. Levels load asynchronously behind a loading bar, and unlocked levels are tracked with PlayerPrefs. The project uses Unity's Universal Render Pipeline, Shader Graph and post-processing, and it includes some third-party asset packs, such as sound effects, shaders and particle packs, for the visuals and audio.",
+    "tech": [
+      "C#",
+      "Unity",
+      "Universal Render Pipeline",
+      "Shader Graph",
+      "TextMeshPro",
+      "Unity Physics",
+      "Unity Animation"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/Echelon",
+    "demoUrl": "https://www.youtube.com/watch?v=pXD7qZu1uOE",
     "published": true
   }
 ]
