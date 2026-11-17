@@ -12,7 +12,7 @@ export type Project = {
   published: boolean;
 };
 
-const FILE = path.join(process.cwd(), "content", "projects.json");
+export const PROJECTS_FILE = path.join(process.cwd(), "content", "projects.json");
 const MAX_TAGLINE = 100;
 
 // The one repo-name rule. The admin routes reuse it before they hand a name to gh, git or claude.
@@ -70,7 +70,7 @@ export function parseProjects(raw: unknown): Project[] {
 
 // Read on every call (not imported as a JSON module), so an admin write shows up in dev without a restart.
 export async function readProjects(): Promise<Project[]> {
-  return parseProjects(JSON.parse(await readFile(FILE, "utf8")));
+  return parseProjects(JSON.parse(await readFile(PROJECTS_FILE, "utf8")));
 }
 
 export async function getPublishedProjects(): Promise<Project[]> {

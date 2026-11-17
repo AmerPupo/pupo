@@ -1,0 +1,17 @@
+import type { Project } from "../projects";
+
+// The array order is the carousel order, and the carousel shows published projects only. So a move swaps with the
+// nearest published project in that direction, and drafts in between stay in their own slots.
+// Returns null when there is nothing to swap with (a draft, an unknown slug, or already first or last), which the UI uses to disable the button.
+export function moveProject(projects: Project[], slug: string, step: -1 | 1): Project[] | null {
+  const from = projects.findIndex((project) => project.slug === slug);
+  if (from < 0 || !projects[from].published) return null;
+
+  let to = from + step;
+  while (projects[to] && !projects[to].published) to += step;
+  if (!projects[to]) return null;
+
+  const moved = [...projects];
+  [moved[from], moved[to]] = [moved[to], moved[from]];
+  return moved;
+}
