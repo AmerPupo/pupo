@@ -1,22 +1,23 @@
 [
   {
-    "slug": "CareFall",
-    "name": "CareFall",
-    "tagline": "Fall-detection device on an ESP8266 that pushes alerts to a Firebase-backed web app.",
-    "description": "CareFall is an IoT project for fall detection. I built the firmware for an ESP8266 board with an MPU6050 motion sensor, plus an installable web app for managing devices and receiving alerts. When the device detects a fall, it switches on an LED and a buzzer. The wearer can silence it with a physical button.\n\nOn the hardware side, I wrote the Arduino C++ firmware. It reads the MPU6050 on all three axes, turns the readings into a single score and compares it to a threshold that is easy to change. It connects over WiFi to a Firebase Realtime Database. It reads a per-device notification delay from the database and, once that delay has passed without the alarm being cleared, writes a fall flag back. Pressing the button clears the alarm locally and resets the flag in the database.\n\nThe front end is a progressive web app in plain HTML, CSS and JavaScript, using the Firebase JavaScript SDK. It has a manifest and a service worker so it can be installed and show system notifications. The app lists registered devices with a status indicator. I added pages to register a device by its code and name, rename it, set the notification delay from 0 to 60 seconds, switch it active or inactive, and remove it. The pages poll the database and raise a notification when a fall is flagged on an active device. What I would highlight is that it connects embedded hardware, a cloud database and an installable app into one working loop.",
+    "slug": "Knjigoteka-RS2",
+    "name": "Knjigoteka",
+    "tagline": "Bookstore and library system with an ASP.NET Core API, Flutter desktop and mobile apps, and Stripe.",
+    "description": "Knjigoteka is an information system for bookstores and libraries that digitises ordering, buying, borrowing, reservations and reviews. It has three roles. Admins manage books, branches, employees and restock approvals in a Flutter desktop app. Employees run branch sales and loans in the same app. Customers browse, order, reserve and review books in a Flutter mobile app and pay for orders through Stripe.\n\nI built the backend as a layered ASP.NET Core 8 Web API. It uses EF Core with SQL Server and migrations, and JWT bearer authentication with role-based authorization. It applies migrations and seeds data on startup. Docker Compose runs the API, SQL Server, RabbitMQ and a separate .NET worker service together. Order checkout runs in a serializable transaction that validates central stock before decrementing it.\n\nTwo parts I would highlight. A background job runs every five minutes and expires unclaimed reservations, returns the stock and adds a penalty to the user. When a book is restocked or returned, the API publishes a message to RabbitMQ. A consumer service then emails the customers who asked to be notified, using MailKit. I also used ML.NET matrix factorization on co-purchase data to recommend related books. This was a university project for the Software Development 2 course at FIT Mostar.",
     "tech": [
-      "C++",
-      "Arduino",
-      "ESP8266",
-      "MPU6050",
-      "Firebase Realtime Database",
-      "JavaScript",
-      "HTML",
-      "CSS",
-      "Progressive Web App",
-      "Service Workers"
+      "C#",
+      "ASP.NET Core",
+      "Entity Framework Core",
+      "SQL Server",
+      "JWT",
+      "RabbitMQ",
+      "Stripe",
+      "ML.NET",
+      "Flutter",
+      "Dart",
+      "Docker"
     ],
-    "repoUrl": "https://github.com/AmerPupo/CareFall",
+    "repoUrl": "https://github.com/AmerPupo/Knjigoteka-RS2",
     "published": true
   },
   {
@@ -43,6 +44,46 @@
     ],
     "repoUrl": "https://github.com/AmerPupo/portfolio",
     "demoUrl": "https://amerpupo.github.io/portfolio/",
+    "published": false
+  },
+  {
+    "slug": "RS1-NjamBa",
+    "name": "NjamBa",
+    "tagline": "Restaurant platform to discover venues, reserve tables, order and pay online",
+    "description": "NjamBa is a full-stack restaurant platform with an Angular front end and an ASP.NET Core Web API on SQL Server. Guests browse restaurants city by city, reserve tables, order from the menu, pay and leave reviews. Owners, waiters and admins each have their own screens for running a venue. I built it in a team of 2, and the Stripe card payments, Firebase image uploads and email verification all connect to external services.\n\nI mainly focused on restaurant discovery, reservations, menu management, most of the owner and admin workflow, reviews and online payments. For discovery, the API returns a paginated, sortable city listing that can be filtered by menu category, delivery, rating band and a price tier computed from the average menu price. For reservations, it offers only tables that fit the party size and sector, enforces the venue's working hours and minimum lead time, and blocks overlapping bookings. Guests can cancel up to an hour ahead. A background service closes no-show reservations and adds penalty points, and an account is disabled at three.\n\nReviews are limited to users with a completed order at that restaurant, one per restaurant, with an optional photo stored in Firebase Storage. Card payments use Stripe PaymentIntents with Stripe.js on the front end, alongside a cash option. Paid orders also award loyalty points that can be redeemed for a discount. Owners add, edit and delete menu items with images and categories, and manage staff, tables, sectors and loyalty rules. Admins manage users, roles, venues, cities and categories.",
+    "tech": [
+      "C#",
+      "ASP.NET Core",
+      "Entity Framework Core",
+      "SQL Server",
+      "TypeScript",
+      "Angular",
+      "Angular Material",
+      "Stripe",
+      "Firebase Storage",
+      "Swagger"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/RS1-NjamBa",
+    "published": true
+  },
+  {
+    "slug": "CareFall",
+    "name": "CareFall",
+    "tagline": "Fall-detection device on an ESP8266 that pushes alerts to a Firebase-backed web app.",
+    "description": "CareFall is an IoT project for fall detection. I built the firmware for an ESP8266 board with an MPU6050 motion sensor, plus an installable web app for managing devices and receiving alerts. When the device detects a fall, it switches on an LED and a buzzer. The wearer can silence it with a physical button.\n\nOn the hardware side, I wrote the Arduino C++ firmware. It reads the MPU6050 on all three axes, turns the readings into a single score and compares it to a threshold that is easy to change. It connects over WiFi to a Firebase Realtime Database. It reads a per-device notification delay from the database and, once that delay has passed without the alarm being cleared, writes a fall flag back. Pressing the button clears the alarm locally and resets the flag in the database.\n\nThe front end is a progressive web app in plain HTML, CSS and JavaScript, using the Firebase JavaScript SDK. It has a manifest and a service worker so it can be installed and show system notifications. The app lists registered devices with a status indicator. I added pages to register a device by its code and name, rename it, set the notification delay from 0 to 60 seconds, switch it active or inactive, and remove it. The pages poll the database and raise a notification when a fall is flagged on an active device. What I would highlight is that it connects embedded hardware, a cloud database and an installable app into one working loop.",
+    "tech": [
+      "C++",
+      "Arduino",
+      "ESP8266",
+      "MPU6050",
+      "Firebase Realtime Database",
+      "JavaScript",
+      "HTML",
+      "CSS",
+      "Progressive Web App",
+      "Service Workers"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/CareFall",
     "published": true
   }
 ]
