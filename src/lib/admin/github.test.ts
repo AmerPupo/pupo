@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cloneRepo, parseRepos } from "./github";
 
@@ -97,4 +99,28 @@ describe("cloneRepo", () => {
       expect(execFile).not.toHaveBeenCalled();
     },
   );
+
+  // --no-upstream stops gh from also fetching a fork's whole parent repo, and --depth 1 keeps the clone shallow.
+  it("deletes the old clone, then runs gh with exactly the shallow-clone arguments, and returns the folder", async () => {
+    // On a plain mock, promisify resolves with the callback's second argument.
+    vi.mocked(execFile).mockImplementationOnce(((...args: unknown[]) =>
+      (args.at(-1) as (error: null, result: unknown) => void)(null, { stdout: "", stderr: "" })) as never);
+
+    const dir = await cloneRepo("demo-app");
+
+    expect(dir).toBe(path.join(os.tmpdir(), "pupo-repos", "demo-app"));
+    expect(rm).toHaveBeenCalledTimes(1);
+    expect(rm).toHaveBeenCalledWith(dir, { recursive: true, force: true });
+    expect(execFile).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(execFile).mock.calls[0].slice(0, 2)).toEqual([
+      "gh",
+      ["repo", "clone", "AmerPupo/demo-app", dir, "--no-upstream", "--", "--depth", "1"],
+    ]);
+    // The old folder goes first. After the clone it would delete the fresh one.
+    expect(vi.mocked(rm).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(execFile).mock.invocationCallOrder[0]);
+  });
+
+  it("lets a gh failure through", async () => {
+    await expect(cloneRepo("demo-app")).rejects.toThrow("execFile is mocked");
+  });
 });

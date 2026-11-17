@@ -1,6 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import fixture from "./fixtures/claude-result.json";
-import { buildPrompt, childEnv, claudeArgs, explainRunError, parseClaudeResult, TIMEOUT_MS } from "./claude";
+import {
+  buildPrompt,
+  childEnv,
+  claudeArgs,
+  explainRunError,
+  generateDraft,
+  parseClaudeResult,
+  TIMEOUT_MS,
+} from "./claude";
+
+// generateDraft starts a real process, so the spawn is mocked and its arguments are checked instead. The real promisify(execFile) resolves
+// { stdout, stderr } and hangs the child process on the promise, and a plain mock has neither, so the mock carries its own promisify.custom.
+vi.mock("node:child_process", async () => {
+  const { promisify } = await import("node:util");
+  const execFile = vi.fn();
+  Object.assign(execFile, { [promisify.custom]: vi.fn() });
+  return { execFile };
+});
+const spawn = (execFile as unknown as Record<symbol, Mock>)[promisify.custom];
 
 // The real output of the spec's command on a public repo (plan Task 3). Error shapes have no capture, so they are hand-written variations of it.
 const RAW = JSON.stringify(fixture);
@@ -208,5 +228,84 @@ describe("explainRunError", () => {
   // A non-zero exit is a failure even when stdout parses, so it never reads as success.
   it("still reports a failure when a run that exited non-zero printed a good draft", () => {
     expect(explainRunError({ stdout: RAW, message: "Command failed: claude" }).message).toMatch(/Command failed/);
+  });
+});
+
+// The spawn options are what keep the run safe: the clone's own files can't replace claude, no API key reaches it, a hung run is killed,
+// and it doesn't wait for input. None of that shows in the parsed result, so each one is pinned here.
+describe("generateDraft", () => {
+  const ORIGINAL = process.env.NoDefaultCurrentDirectoryInExePath;
+  let stdin: { end: Mock };
+  let atSpawn: { lookup?: string };
+
+  beforeEach(() => {
+    delete process.env.NoDefaultCurrentDirectoryInExePath; // as in a plain terminal; a Claude Code session sets it itself
+    vi.stubEnv("ANTHROPIC_API_KEY", "key");
+    vi.stubEnv("anthropic_base_url", "url"); // Windows treats names case-insensitively
+    vi.stubEnv("PUPO_TEST_KEEP", "yes");
+    stdin = { end: vi.fn() };
+    atSpawn = {};
+    spawn.mockReset();
+    // The variable is read inside the call: generateDraft leaves it set for the whole process, so looking afterwards would prove nothing.
+    spawn.mockImplementation(() => {
+      atSpawn.lookup = process.env.NoDefaultCurrentDirectoryInExePath;
+      return Object.assign(Promise.resolve({ stdout: RAW, stderr: "" }), { child: { stdin } });
+    });
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  afterAll(() => {
+    if (ORIGINAL === undefined) delete process.env.NoDefaultCurrentDirectoryInExePath;
+    else process.env.NoDefaultCurrentDirectoryInExePath = ORIGINAL;
+  });
+
+  it("runs claude in the clone with the spec's arguments and a 5-minute timeout, and no shell", async () => {
+    await generateDraft("/clones/demo-app", "a note");
+
+    expect(spawn).toHaveBeenCalledTimes(1);
+    const [file, args, options] = spawn.mock.calls[0];
+    expect(file).toBe("claude");
+    expect(args).toEqual(claudeArgs("a note"));
+    expect(options.cwd).toBe("/clones/demo-app");
+    expect(options.timeout).toBe(TIMEOUT_MS);
+    expect(options).not.toHaveProperty("shell");
+  });
+
+  it("returns the draft that claude printed", async () => {
+    await expect(generateDraft("/clones/demo-app")).resolves.toEqual(DRAFT);
+  });
+
+  it("gives the child no ANTHROPIC_ variable in any case, and keeps the rest of the environment", async () => {
+    await generateDraft("/clones/demo-app");
+
+    const { env } = spawn.mock.calls[0][2];
+    expect(env).not.toBe(process.env);
+    expect(Object.keys(env).filter((name) => /^ANTHROPIC_/i.test(name))).toEqual([]);
+    expect(env.PUPO_TEST_KEEP).toBe("yes");
+    expect(Object.keys(env).some((name) => /^path$/i.test(name))).toBe(true);
+  });
+
+  it("closes the child's stdin, because left open claude waits 3 s for piped input", async () => {
+    await generateDraft("/clones/demo-app");
+    expect(stdin.end).toHaveBeenCalledTimes(1);
+  });
+
+  it("sets NoDefaultCurrentDirectoryInExePath to 1 before it spawns, so a claude.exe in the clone is not run", async () => {
+    expect(process.env.NoDefaultCurrentDirectoryInExePath).toBeUndefined();
+    await generateDraft("/clones/demo-app");
+    expect(atSpawn.lookup).toBe("1");
+  });
+
+  it("reports a run that was killed by the timeout", async () => {
+    const killed = Object.assign(new Error("Command failed: claude"), { killed: true });
+    spawn.mockImplementation(() => Object.assign(Promise.reject(killed), { child: { stdin } }));
+    await expect(generateDraft("/clones/demo-app")).rejects.toThrow(/timed out after 5 minutes/);
+  });
+
+  it("reports claude's own failure when it can't start", async () => {
+    const missing = new Error("spawn claude ENOENT");
+    spawn.mockImplementation(() => Object.assign(Promise.reject(missing), { child: { stdin } }));
+    await expect(generateDraft("/clones/demo-app")).rejects.toThrow(/spawn claude ENOENT/);
   });
 });

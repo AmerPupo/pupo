@@ -125,6 +125,8 @@ export function explainRunError({ killed, stdout, stderr, message }: RunError): 
 
 // Runs claude in `cwd`, a clone of the repo, and returns its draft. Arguments go to execFile as an array, never through a shell.
 export async function generateDraft(cwd: string, note?: string): Promise<Draft> {
+  // On Windows execFile looks in cwd (the clone) before PATH, so a claude.exe committed to a repo would run instead of Claude. This stops that.
+  process.env.NoDefaultCurrentDirectoryInExePath = "1";
   const run = execFileAsync("claude", claudeArgs(note), { cwd, env: childEnv(process.env), timeout: TIMEOUT_MS });
   run.child.stdin?.end(); // left open, claude -p waits 3 s for piped input before it starts
 
