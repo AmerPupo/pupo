@@ -21,10 +21,10 @@ export default function Home() {
         <a href={`mailto:${SITE.email}`} className={SECONDARY}>
           {SITE.email}
         </a>
-        <a href={SITE.github} className={SECONDARY}>
+        <a href={SITE.github} className={SECONDARY} target="_blank">
           GitHub
         </a>
-        <a href={SITE.linkedin} className={SECONDARY}>
+        <a href={SITE.linkedin} className={SECONDARY} target="_blank">
           LinkedIn
         </a>
       </div>
