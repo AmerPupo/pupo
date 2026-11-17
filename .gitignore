@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# planning docs stay on the author's machine
+/tasks/
+/docs/
+/SPEC.md
