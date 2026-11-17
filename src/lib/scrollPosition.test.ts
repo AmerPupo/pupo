@@ -25,11 +25,29 @@ describe("scrollPosition", () => {
     expect(scrollPosition(track(0.4))).toBe("start");
   });
 
+  // The slack is exactly 1px: these sit on its edge, and the next two just outside it.
+  it("is start at exactly 1px from the left edge", () => {
+    expect(scrollPosition(track(1))).toBe("start");
+  });
+
+  it("is end at exactly 1px from the right edge", () => {
+    expect(scrollPosition(track(599))).toBe("end");
+  });
+
+  it("is middle just outside the 1px slack on either side", () => {
+    expect(scrollPosition(track(1.5))).toBe("middle");
+    expect(scrollPosition(track(598.5))).toBe("middle");
+  });
+
   it("is fits when every card is already visible", () => {
     expect(scrollPosition({ scrollLeft: 0, clientWidth: 900, scrollWidth: 900 })).toBe("fits");
   });
 
   it("is fits when the overflow is one pixel of rounding", () => {
     expect(scrollPosition({ scrollLeft: 0, clientWidth: 900, scrollWidth: 901 })).toBe("fits");
+  });
+
+  it("is not fits when the overflow is 2px, so the arrows show", () => {
+    expect(scrollPosition({ scrollLeft: 0, clientWidth: 900, scrollWidth: 902 })).toBe("start");
   });
 });

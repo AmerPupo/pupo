@@ -62,6 +62,19 @@ describe("parseProjects", () => {
     );
   });
 
+  // A blank string is a string, so a typeof check would let it through. It would then show as an empty title, card line or paragraph.
+  describe.each(["name", "tagline", "description"])("%s", (field) => {
+    it.each(["", "   ", "\n\t"])("rejects %j, naming the entry and the field", (value) => {
+      expect(() => parseProjects(withBadSecond({ [field]: value }))).toThrow(
+        new RegExp(`entry 2 "broken": ${field} must be a non-empty string`),
+      );
+    });
+  });
+
+  it.each([[[""]], [["   "]], [["C++", ""]]])("rejects the tech list %j, naming the entry", (tech) => {
+    expect(() => parseProjects(withBadSecond({ tech }))).toThrow(/entry 2 "broken": tech must be an array of non-empty strings/);
+  });
+
   it("rejects a duplicate slug, naming it", () => {
     expect(() => parseProjects([VALID, { ...VALID, name: "Copy" }])).toThrow(
       /entry 2 "CareFall".*duplicate/,
