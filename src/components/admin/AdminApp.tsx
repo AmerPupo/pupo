@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent } from "react";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
 import type { Repo } from "@/lib/admin/github";
-import { moveProject } from "@/lib/admin/order";
+import { moveProject, upsertProject } from "@/lib/admin/order";
 import type { Project } from "@/lib/projects";
 
 // This runs in the browser, so it may only `import type` from github.ts (child processes) and projects.ts (node:fs).
@@ -18,6 +18,10 @@ const DISABLED = "disabled:pointer-events-none disabled:opacity-40 aria-disabled
 // The editable fields of a Project, as the text the inputs hold.
 type Form = { name: string; tagline: string; description: string; tech: string; demoUrl: string };
 type Message = { slug: string; text: string; error: boolean };
+// What POST /api/admin/draft answers with. demoUrl is absent when the repo has no usable homepage.
+type DraftReply = Omit<Project, "slug" | "published">;
+
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const toForm = (project: Project): Form => ({
   name: project.name,
@@ -39,20 +43,24 @@ function toProject(base: Project, form: Form, published: boolean): Project {
   };
 }
 
-// The server answers with the list it wrote, or { error } and a status. Anything else (a crash page, no connection) still gets a message.
-async function putProjects(projects: Project[]): Promise<Project[]> {
-  const response = await fetch("/api/admin/projects", {
-    method: "PUT",
+// Both admin routes answer with their JSON result, or { error } and a status. Anything else (a crash page, no connection) still gets a message.
+async function send<T>(method: "PUT" | "POST", url: string, payload: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(projects),
+    body: JSON.stringify(payload),
   });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const error = (body as { error?: unknown } | null)?.error;
     throw new Error(typeof error === "string" ? error : `The server answered ${response.status}.`);
   }
-  return body as Project[];
+  return body as T;
 }
+
+// The server answers a save with the list it wrote.
+const putProjects = (projects: Project[]) => send<Project[]>("PUT", "/api/admin/projects", projects);
+const postDraft = (name: string, note: string) => send<DraftReply>("POST", "/api/admin/draft", { name, note });
 
 // A repo is "added" once projects.json has an entry named after it, and a draft is an entry that isn't published yet.
 function statusOf(repo: Repo, projects: Project[]) {
@@ -65,7 +73,17 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
   const [projects, setProjects] = useState(initialProjects);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  // Drafts from Claude, by repo name. They are what an editor starts from, and nothing is saved until Save. An entry stays here after its Save:
+  // `rev` counts the generations, and the editor is keyed on it, so a new draft resets the form but a Save never remounts it (focus stays on the button).
+  const [generated, setGenerated] = useState<Record<string, { project: Project; rev: number }>>({});
   const publicRepos = new Set(repos.filter((repo) => repo.visibility === "PUBLIC").map((repo) => repo.name));
+  // The saved projects, then drafts whose repo isn't in the file yet.
+  const entries = [
+    ...projects,
+    ...Object.values(generated)
+      .map((draft) => draft.project)
+      .filter((draft) => !projects.some((project) => project.slug === draft.slug)),
+  ];
 
   // Every change is "send the whole next list, then adopt what the server wrote". Each request replaces the whole file,
   // so callers must not start one while `busy`. Nothing changes here unless the server accepts it.
@@ -76,7 +94,29 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
       setProjects(await putProjects(next));
       setMessage({ slug, text: done, error: false });
     } catch (error) {
-      setMessage({ slug, text: error instanceof Error ? error.message : String(error), error: true });
+      setMessage({ slug, text: messageOf(error), error: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Generate and Regenerate take the same `busy` as a save, so nothing else can change the list while a run is going (it can take minutes).
+  // The draft only fills an editor: nothing is written until Save.
+  async function generate(slug: string, note: string) {
+    if (busy) return;
+    setBusy(true);
+    setMessage({ slug, text: "Generating a draft with Claude. This can take a few minutes…", error: false });
+    try {
+      const draft = await postDraft(slug, note);
+      // A demo URL that was typed in by hand survives a regenerate when the repo has no homepage to take one from.
+      const demoUrl = draft.demoUrl ?? projects.find((project) => project.slug === slug)?.demoUrl;
+      setGenerated((current) => ({
+        ...current,
+        [slug]: { project: { ...draft, slug, demoUrl, published: false }, rev: (current[slug]?.rev ?? 0) + 1 },
+      }));
+      setMessage({ slug, text: "Draft ready. It is not saved yet: edit it, then Save draft or Publish.", error: false });
+    } catch (error) {
+      setMessage({ slug, text: messageOf(error), error: true });
     } finally {
       setBusy(false);
     }
@@ -93,7 +133,7 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
       );
       if (!ok) return;
     }
-    await commit(updated.slug, projects.map((p) => (p.slug === updated.slug ? updated : p)), done);
+    await commit(updated.slug, upsertProject(projects, updated), done);
   }
 
   async function move(slug: string, step: -1 | 1) {
@@ -108,11 +148,13 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
           Projects
         </h2>
         <p className="mt-1 text-sm text-muted">The carousel shows the published ones, in this order.</p>
-        {projects.length === 0 ? (
+        {entries.length === 0 ? (
           <p className="mt-4 text-sm text-muted">No projects yet.</p>
         ) : (
           <ul className="mt-4">
-            {projects.map((project) => {
+            {entries.map((project) => {
+              const gen = generated[project.slug];
+              const isSaved = projects.some((saved) => saved.slug === project.slug);
               const isPublic = publicRepos.has(project.slug);
               return (
                 <li key={project.slug} className="border-b border-border py-4">
@@ -120,7 +162,7 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
                     <h3 className="font-medium wrap-anywhere">{project.name}</h3>
                     <span className="text-sm text-muted wrap-anywhere">{project.slug}</span>
                     <span className={`text-sm ${project.published ? "text-accent" : "text-muted"}`}>
-                      {project.published ? "published" : "draft"}
+                      {!isSaved ? "unsaved draft" : project.published ? "published" : "draft"}
                     </span>
                     {!isPublic && <span className={LABEL}>repo private or missing</span>}
                     {project.published && (
@@ -146,24 +188,30 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
                       </div>
                     )}
                   </div>
-                  <details className="mt-3">
+                  {/* `open` follows "has a draft from Claude", which a Save doesn't change, so a Save never closes the editor. */}
+                  <details className="mt-3" open={gen ? true : undefined}>
                     <summary className="cursor-pointer text-sm">
                       Edit<span className="sr-only"> {project.name}</span>
                     </summary>
-                    <ProjectEditor project={project} canPublish={isPublic} busy={busy} onSave={save} />
+                    <ProjectEditor
+                      key={`${project.slug}:${gen?.rev ?? 0}`}
+                      project={project}
+                      initial={gen?.project ?? project}
+                      canPublish={isPublic}
+                      busy={busy}
+                      // Only the first draft of a repo that isn't saved yet: its item has just appeared, possibly far from the Generate button.
+                      autoFocusName={!isSaved && gen?.rev === 1}
+                      onSave={save}
+                    />
+                    {!project.published && isPublic && (
+                      <RegenerateForm
+                        name={project.name}
+                        busy={busy}
+                        onRegenerate={(note) => generate(project.slug, note)}
+                      />
+                    )}
                   </details>
-                  {message?.slug === project.slug && (
-                    <p
-                      role={message.error ? "alert" : "status"}
-                      className={
-                        message.error
-                          ? "mt-3 rounded-md border border-border bg-card p-3 text-sm whitespace-pre-wrap wrap-anywhere"
-                          : "mt-3 text-sm text-muted"
-                      }
-                    >
-                      {message.text}
-                    </p>
-                  )}
+                  {message?.slug === project.slug && <MessageLine message={message} />}
                 </li>
               );
             })}
@@ -191,8 +239,11 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
               <th scope="col" className="py-2 pr-6 font-medium">
                 Updated
               </th>
-              <th scope="col" className="py-2 font-medium">
+              <th scope="col" className="py-2 pr-6 font-medium">
                 Status
+              </th>
+              <th scope="col" className="py-2 font-medium">
+                Action
               </th>
             </tr>
           </thead>
@@ -222,7 +273,25 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
                   <td className="py-3 pr-6">
                     <time dateTime={repo.updatedAt}>{repo.updatedAt.slice(0, 10)}</time>
                   </td>
-                  <td className={`py-3 ${status === "published" ? "text-accent" : ""}`}>{status}</td>
+                  <td className={`py-3 pr-6 ${status === "published" ? "text-accent" : ""}`}>{status}</td>
+                  <td className="py-3">
+                    {/* Only public repos can be drafted (the server checks too). Once a draft exists, its item has Regenerate. */}
+                    {status === "not added" && repo.visibility === "PUBLIC" && !generated[repo.name] && (
+                      <button
+                        type="button"
+                        aria-label={`Generate a draft for ${repo.name}`}
+                        aria-disabled={busy}
+                        onClick={() => generate(repo.name, "")}
+                        className={`${SECONDARY} ${DISABLED}`}
+                      >
+                        Generate
+                      </button>
+                    )}
+                    {/* With no item yet (a run in progress, or one that failed) the message has nowhere else to show. */}
+                    {message?.slug === repo.name && !entries.some((entry) => entry.slug === repo.name) && (
+                      <MessageLine message={message} />
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -234,18 +303,23 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
 }
 
 // Save, Publish and Unpublish all send what the fields hold now. Save keeps the published state, and the other two flip it.
+// The fields start from `initial` (a draft from Claude, or the project itself) and are only read once, so a new draft needs a new `key`.
 function ProjectEditor({
   project,
+  initial,
   canPublish,
   busy,
+  autoFocusName,
   onSave,
 }: {
   project: Project;
+  initial: Project;
   canPublish: boolean;
   busy: boolean;
+  autoFocusName: boolean;
   onSave: (project: Project, done: string) => void;
 }) {
-  const [form, setForm] = useState(() => toForm(project));
+  const [form, setForm] = useState(() => toForm(initial));
   const field = (key: keyof Form) => ({
     value: form[key],
     onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -265,7 +339,7 @@ function ProjectEditor({
     >
       <label className="block text-sm">
         Name
-        <input type="text" {...field("name")} className={FIELD} />
+        <input type="text" autoFocus={autoFocusName} {...field("name")} className={FIELD} />
       </label>
       <label className="block text-sm">
         Tagline <span className="text-muted">(one line)</span>
@@ -304,5 +378,52 @@ function ProjectEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+// Beside the editor, not inside it: every generation remounts the editor, and the note should survive to the next one.
+// Its own form, so Enter in the note field regenerates instead of submitting the editor's Save.
+function RegenerateForm({
+  name,
+  busy,
+  onRegenerate,
+}: {
+  name: string;
+  busy: boolean;
+  onRegenerate: (note: string) => void;
+}) {
+  const [note, setNote] = useState("");
+  return (
+    <form
+      aria-label={`Regenerate ${name}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onRegenerate(note);
+      }}
+      className="mt-6 flex flex-wrap items-end gap-3"
+    >
+      <label className="block min-w-60 flex-1 text-sm">
+        Note for Claude <span className="text-muted">(optional, for example: focus on the backend)</span>
+        <input type="text" value={note} onChange={(event) => setNote(event.target.value)} className={FIELD} />
+      </label>
+      <button type="submit" aria-disabled={busy} className={`${SECONDARY} ${DISABLED}`}>
+        Regenerate
+      </button>
+    </form>
+  );
+}
+
+function MessageLine({ message }: { message: Message }) {
+  return (
+    <p
+      role={message.error ? "alert" : "status"}
+      className={
+        message.error
+          ? "mt-3 rounded-md border border-border bg-card p-3 text-sm whitespace-pre-wrap wrap-anywhere"
+          : "mt-3 text-sm text-muted"
+      }
+    >
+      {message.text}
+    </p>
   );
 }

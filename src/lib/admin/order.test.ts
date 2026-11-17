@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Project } from "../projects";
-import { moveProject } from "./order";
+import { moveProject, upsertProject } from "./order";
 
 function project(slug: string, published = true): Project {
   return {
@@ -69,5 +69,30 @@ describe("moveProject", () => {
     const moved = moveProject(projects, "b", -1);
     expect(moved).not.toBe(projects);
     expect(slugs(projects)).toEqual(["a", "b"]);
+  });
+});
+
+describe("upsertProject", () => {
+  it("replaces the project with the same slug, in its own slot", () => {
+    const edited = { ...project("b"), name: "Edited" };
+    const result = upsertProject([project("a"), project("b"), project("c")], edited);
+    expect(slugs(result)).toEqual(["a", "b", "c"]);
+    expect(result[1].name).toBe("Edited");
+  });
+
+  // A draft that was just generated is not in the list yet. Replacing by slug alone would drop it, and the save would still look like it worked.
+  it("appends a project that is not in the list", () => {
+    const result = upsertProject([project("a"), project("b", false)], project("new", false));
+    expect(slugs(result)).toEqual(["a", "b", "new"]);
+  });
+
+  it("appends to an empty list", () => {
+    expect(slugs(upsertProject([], project("new", false)))).toEqual(["new"]);
+  });
+
+  it("does not change the list it is given", () => {
+    const projects = [project("a")];
+    upsertProject(projects, project("new", false));
+    expect(slugs(projects)).toEqual(["a"]);
   });
 });

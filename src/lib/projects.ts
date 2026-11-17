@@ -20,10 +20,10 @@ export function isValidSlug(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9._-]+$/.test(value) && value !== "." && value !== "..";
 }
 
-const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
+export const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
 
 // URLs end up as public links, so only http(s) passes (no javascript:, data: and so on).
-function isHttpUrl(value: unknown): value is string {
+export function isHttpUrl(value: unknown): value is string {
   if (typeof value !== "string") return false;
   try {
     const { protocol } = new URL(value);

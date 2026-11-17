@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { parseRepos } from "./github";
+import { execFile } from "node:child_process";
+import { rm } from "node:fs/promises";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cloneRepo, parseRepos } from "./github";
+
+// cloneRepo deletes a folder and runs gh. Mocked, so a test of its guard can never touch the real disk,
+// even if the guard were removed: the name ".." would otherwise delete os.tmpdir() itself.
+vi.mock("node:fs/promises", () => ({ rm: vi.fn(async () => undefined) }));
+vi.mock("node:child_process", () => ({
+  // Fails through its callback, which is how promisify(execFile) reads the result, so a missing guard fails fast instead of hanging.
+  execFile: vi.fn((...args: unknown[]) => (args.at(-1) as (error: Error) => void)(new Error("execFile is mocked"))),
+}));
 
 // What `gh repo list --json ...` prints for a public repo. The names are made up.
 const PUBLIC = {
@@ -73,4 +83,18 @@ describe("parseRepos", () => {
   it.each(["..", "a/b", "a b", ""])("rejects the repo name %j", (name) => {
     expect(() => parseRepos(withBadSecond({ name }))).toThrow(/entry 2.*name/);
   });
+});
+
+describe("cloneRepo", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // The name becomes a folder that is deleted before the clone, so a bad one has to fail before gh runs or any file is touched.
+  it.each(["", ".", "..", "../x", "a/b", "a\\b", "a b", "a\nb"])(
+    "refuses the repo name %j before deleting anything or running gh",
+    async (name) => {
+      await expect(cloneRepo(name)).rejects.toThrow(/repo name/);
+      expect(rm).not.toHaveBeenCalled();
+      expect(execFile).not.toHaveBeenCalled();
+    },
+  );
 });

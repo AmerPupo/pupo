@@ -15,3 +15,11 @@ export function moveProject(projects: Project[], slug: string, step: -1 | 1): Pr
   [moved[from], moved[to]] = [moved[to], moved[from]];
   return moved;
 }
+
+// Save replaces the project with the same slug, or appends it. A draft that was just generated is not in the list yet,
+// and replacing by slug alone would drop it while the save still looked like it worked.
+export function upsertProject(projects: Project[], updated: Project): Project[] {
+  return projects.some((project) => project.slug === updated.slug)
+    ? projects.map((project) => (project.slug === updated.slug ? updated : project))
+    : [...projects, updated];
+}

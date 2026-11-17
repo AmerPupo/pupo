@@ -1,10 +1,15 @@
 import { execFile } from "node:child_process";
+import { rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 import { isValidSlug } from "../projects";
 
 const execFileAsync = promisify(execFile);
 
 const OWNER = "AmerPupo";
+// Outside the project (SPEC), so ESLint, Vitest and the dev watcher never see cloned code.
+const CLONES_DIR = path.join(os.tmpdir(), "pupo-repos");
 const VISIBILITIES = ["PUBLIC", "PRIVATE", "INTERNAL"] as const;
 
 // The fields `gh repo list --json` prints, in gh's own shapes.
@@ -68,4 +73,17 @@ export async function listRepos(): Promise<Repo[]> {
     "name,visibility,primaryLanguage,updatedAt,isFork,isArchived,url,homepageUrl",
   ]);
   return parseRepos(JSON.parse(stdout));
+}
+
+// A fresh shallow clone in os.tmpdir()/pupo-repos/<name>, so a regenerate sees the repo as it is now. The old clone is deleted first,
+// which is why the name has to pass the slug check before it becomes a path. The owner prefix and the absolute folder keep gh from
+// reading the name as an option, and --no-upstream stops gh from also fetching a fork's whole parent repo.
+// shortcut: no timeout on the clone, so a huge repo makes the page wait (shallow clones of small repos take seconds); two requests for the same repo would share one folder, and the page sends one at a time.
+export async function cloneRepo(name: string): Promise<string> {
+  if (!isValidSlug(name)) throw new Error(`"${name}" is not a valid repo name.`);
+
+  const dir = path.join(CLONES_DIR, name);
+  await rm(dir, { recursive: true, force: true });
+  await execFileAsync("gh", ["repo", "clone", `${OWNER}/${name}`, dir, "--no-upstream", "--", "--depth", "1"]);
+  return dir;
 }
