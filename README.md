@@ -1,36 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# pupo
 
-## Getting Started
+Portfolio site of Amer Jašarević: a static site built with Next.js, React, TypeScript and Tailwind CSS. The home page has a typed name, a short bio, contact links, a CV download and a carousel of projects, and each project has its own page. The projects are data in `content/projects.json`.
 
-First, run the development server:
+## Admin (development only)
+
+`npm run dev` also serves `/admin` on `127.0.0.1`. It lists the GitHub repositories through the `gh` CLI, drafts a project entry for a public one with the Claude Code CLI (`claude -p`, signed in with a subscription, no API key) and writes `content/projects.json`. Only public repositories can be drafted or published.
+
+None of this ships. The production build is a static export, the admin files count as routes only under `next dev`, and a `postbuild` check fails the build if an `admin` or `api` path ever reaches `out/`.
+
+## Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm ci          # install
+npm run dev     # dev server with the admin, at http://127.0.0.1:3000
+npm test        # Vitest
+npm run lint    # ESLint
+npm run build   # static export to out/, then the postbuild check
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Needs Node 22. The admin also needs `gh` and `claude`, both logged in.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All rights reserved.
