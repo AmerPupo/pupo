@@ -1,0 +1,48 @@
+[
+  {
+    "slug": "CareFall",
+    "name": "CareFall",
+    "tagline": "Fall-detection device on an ESP8266 that pushes alerts to a Firebase-backed web app.",
+    "description": "CareFall is an IoT project for fall detection. I built the firmware for an ESP8266 board with an MPU6050 motion sensor, plus an installable web app for managing devices and receiving alerts. When the device detects a fall, it switches on an LED and a buzzer. The wearer can silence it with a physical button.\n\nOn the hardware side, I wrote the Arduino C++ firmware. It reads the MPU6050 on all three axes, turns the readings into a single score and compares it to a threshold that is easy to change. It connects over WiFi to a Firebase Realtime Database. It reads a per-device notification delay from the database and, once that delay has passed without the alarm being cleared, writes a fall flag back. Pressing the button clears the alarm locally and resets the flag in the database.\n\nThe front end is a progressive web app in plain HTML, CSS and JavaScript, using the Firebase JavaScript SDK. It has a manifest and a service worker so it can be installed and show system notifications. The app lists registered devices with a status indicator. I added pages to register a device by its code and name, rename it, set the notification delay from 0 to 60 seconds, switch it active or inactive, and remove it. The pages poll the database and raise a notification when a fall is flagged on an active device. What I would highlight is that it connects embedded hardware, a cloud database and an installable app into one working loop.",
+    "tech": [
+      "C++",
+      "Arduino",
+      "ESP8266",
+      "MPU6050",
+      "Firebase Realtime Database",
+      "JavaScript",
+      "HTML",
+      "CSS",
+      "Progressive Web App",
+      "Service Workers"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/CareFall",
+    "published": true
+  },
+  {
+    "slug": "Echelon",
+    "name": "Echelon",
+    "tagline": "A 3D first-person game built in Unity and C#.",
+    "description": "Echelon is a 3D first-person game that I made for KGR. It is a Unity project written in C#.",
+    "tech": [
+      "Unity",
+      "C#"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/Echelon",
+    "published": false
+  },
+  {
+    "slug": "portfolio",
+    "name": "Previous portfolio site",
+    "tagline": "My earlier portfolio site, built as static HTML and CSS pages on GitHub Pages.",
+    "description": "This is the portfolio site I made before this one. It is a static site written in HTML and CSS and hosted on GitHub Pages, with a home page and two project pages.",
+    "tech": [
+      "HTML",
+      "CSS",
+      "GitHub Pages"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/portfolio",
+    "demoUrl": "https://amerpupo.github.io/portfolio/",
+    "published": true
+  }
+]

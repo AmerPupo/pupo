@@ -1,10 +1,6 @@
+import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
 import { Typewriter } from "@/components/Typewriter";
 import { SITE } from "@/site.config";
-
-const BUTTON =
-  "inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium transition-colors duration-200 ease-out-soft";
-const PRIMARY = `${BUTTON} bg-foreground text-background hover:bg-foreground/85`;
-const SECONDARY = `${BUTTON} border border-border hover:border-muted hover:bg-card`;
 
 export default function Home() {
   return (
