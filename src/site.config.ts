@@ -1,5 +1,6 @@
 // Personal details shown on the public site. Change them here and nowhere else.
 export const SITE = {
+  // globals.css sizes the hero text for a name of 14 characters (this one). A longer name would clip on phones, so change --text-display too.
   name: "Amer Jašarević",
   role: "Software Engineer",
   bio: "I build production-ready full-stack software, with hands-on experience in applied AI. Alumnus of the Zoran Đinđić Internship Programme of German Business.",
@@ -7,4 +8,5 @@ export const SITE = {
   github: "https://github.com/AmerPupo",
   linkedin: "https://www.linkedin.com/in/amer-jasarevic-93457a305/",
   cv: "/cv.pdf",
+  cvFileName: "Amer-Jasarevic-CV.pdf", // what the browser saves the download as
 };

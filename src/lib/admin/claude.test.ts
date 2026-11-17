@@ -22,7 +22,7 @@ vi.mock("node:child_process", async () => {
 });
 const spawn = (execFile as unknown as Record<symbol, Mock>)[promisify.custom];
 
-// The real output of the spec's command on a public repo (plan Task 3). Error shapes have no capture, so they are hand-written variations of it.
+// The real output of the draft command on a public repo. Error shapes have no capture, so they are hand-written variations of it.
 const RAW = JSON.stringify(fixture);
 const DRAFT = fixture.structured_output;
 const withChanges = (changes: Record<string, unknown>) => JSON.stringify({ ...fixture, ...changes });
@@ -133,9 +133,9 @@ describe("buildPrompt", () => {
   });
 });
 
-// SPEC: "Ask first: changing the claude -p flags/model", and "Never: give the drafting run write, shell or network tools".
+// Changing a flag or the model needs the author's OK first, and the drafting run must never get write, shell or network tools.
 describe("claudeArgs", () => {
-  it("is the spec's command, flag for flag", () => {
+  it("is the draft command, flag for flag", () => {
     const args = claudeArgs("a note");
     const schemaAt = args.indexOf("--json-schema") + 1;
     const flags = args.filter((_, index) => index !== 1 && index !== schemaAt); // the prompt and the schema text
@@ -184,7 +184,7 @@ describe("childEnv", () => {
       anthropic_base_url: "url", // Windows treats names case-insensitively
       Anthropic_Auth_Token: "token",
       PATH: "/bin",
-      CLAUDECODE: "1", // Task 3: claude works with these inherited, so they stay
+      CLAUDECODE: "1", // claude works with these inherited, so they stay
       CLAUDE_CODE_ENTRYPOINT: "cli",
       MY_ANTHROPIC_KEY: "x", // only the prefix counts
     };
@@ -260,7 +260,7 @@ describe("generateDraft", () => {
     else process.env.NoDefaultCurrentDirectoryInExePath = ORIGINAL;
   });
 
-  it("runs claude in the clone with the spec's arguments and a 5-minute timeout, and no shell", async () => {
+  it("runs claude in the clone with the draft command's arguments and a 5-minute timeout, and no shell", async () => {
     await generateDraft("/clones/demo-app", "a note");
 
     expect(spawn).toHaveBeenCalledTimes(1);

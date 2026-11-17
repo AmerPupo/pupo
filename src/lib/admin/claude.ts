@@ -8,7 +8,11 @@ export const TIMEOUT_MS = 5 * 60 * 1000;
 
 export type Draft = { name: string; tagline: string; description: string; tech: string[] };
 
-// Prompt v1 from the Task 3 spike (tasks/plan.md). A regenerate note is added at the end.
+// What POST /api/admin/draft answers with: the draft plus the repo's links. demoUrl is absent when the repo has no usable homepage.
+// The route builds it and the admin page reads it, both through this type, so changing one side without the other fails the type-check.
+export type DraftReply = Draft & { repoUrl: string; demoUrl?: string };
+
+// The draft prompt: first person, plain-text paragraphs, a tagline of at most 100 characters. A regenerate note is added at the end.
 const PROMPT = `You are helping me write the portfolio entry for one of my own software projects. The current directory is a clone of its GitHub repository.
 
 Explore it with the Read, Glob and Grep tools. Start with the README and any manifest file (package.json, pyproject.toml, requirements.txt, *.csproj and so on), then read the main source files. Only say what the code or README supports. Do not invent features, numbers, users or deployments.
@@ -36,7 +40,7 @@ export function buildPrompt(note?: string): string {
   return note ? `${PROMPT}\n\nA note from me about this draft. Follow it where the code supports it: ${note}` : PROMPT;
 }
 
-// SPEC's draft-generation command, flag for flag. Changing a flag or the model means asking Amer first, and --bare must never be used (it ignores the subscription login).
+// The draft command, flag for flag. Changing a flag or the model needs the author's OK first, and --bare must never be used (it ignores the subscription login).
 export function claudeArgs(note?: string): string[] {
   return [
     "-p", buildPrompt(note),
@@ -73,7 +77,7 @@ function toDraft(value: unknown): Draft {
   return { name, tagline, description, tech };
 }
 
-// What `claude -p --output-format json` prints is one result object. The draft is its `structured_output` (Task 3: `result` holds the same
+// What `claude -p --output-format json` prints is one result object. The draft is its `structured_output` (`result` holds the same
 // object as JSON text, so that is the fallback). `stop_reason` is "tool_use" even on success, so it is not used.
 // The tagline limit is not checked here: a draft with a long one still reaches the editor, and Save shows parseProjects' error.
 export function parseClaudeResult(stdout: string): Draft {

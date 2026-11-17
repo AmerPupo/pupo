@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
+import type { DraftReply } from "@/lib/admin/claude";
 import type { Repo } from "@/lib/admin/github";
 import { moveProject, upsertProject } from "@/lib/admin/order";
 import type { Project } from "@/lib/projects";
@@ -18,8 +19,6 @@ const DISABLED = "disabled:pointer-events-none disabled:opacity-40 aria-disabled
 // The editable fields of a Project, as the text the inputs hold.
 type Form = { name: string; tagline: string; description: string; tech: string; demoUrl: string };
 type Message = { slug: string; text: string; error: boolean };
-// What POST /api/admin/draft answers with. demoUrl is absent when the repo has no usable homepage.
-type DraftReply = Omit<Project, "slug" | "published">;
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 

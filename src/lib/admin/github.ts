@@ -8,7 +8,7 @@ import { isValidSlug } from "../projects";
 const execFileAsync = promisify(execFile);
 
 const OWNER = "AmerPupo";
-// Outside the project (SPEC), so ESLint, Vitest and the dev watcher never see cloned code.
+// Outside the project, so ESLint, Vitest and the dev watcher never see cloned code.
 const CLONES_DIR = path.join(os.tmpdir(), "pupo-repos");
 const VISIBILITIES = ["PUBLIC", "PRIVATE", "INTERNAL"] as const;
 
@@ -75,15 +75,24 @@ export async function listRepos(): Promise<Repo[]> {
   return parseRepos(JSON.parse(stdout));
 }
 
-// A fresh shallow clone in os.tmpdir()/pupo-repos/<name>, so a regenerate sees the repo as it is now. The old clone is deleted first,
-// which is why the name has to pass the slug check before it becomes a path. The owner prefix and the absolute folder keep gh from
-// reading the name as an option, and --no-upstream stops gh from also fetching a fork's whole parent repo.
+// The folder of one repo's clone. A folder that gets deleted, so the name has to pass the slug check before it becomes a path (".." is os.tmpdir()).
+function cloneDir(name: string): string {
+  if (!isValidSlug(name)) throw new Error(`"${name}" is not a valid repo name.`);
+  return path.join(CLONES_DIR, name);
+}
+
+// A fresh shallow clone in os.tmpdir()/pupo-repos/<name>, so a regenerate sees the repo as it is now. The old clone is deleted first.
+// The owner prefix and the absolute folder keep gh from reading the name as an option, and --no-upstream stops gh from also fetching a fork's whole parent repo.
 // shortcut: no timeout on the clone, so a huge repo makes the page wait (shallow clones of small repos take seconds); two requests for the same repo would share one folder, and the page sends one at a time.
 export async function cloneRepo(name: string): Promise<string> {
-  if (!isValidSlug(name)) throw new Error(`"${name}" is not a valid repo name.`);
-
-  const dir = path.join(CLONES_DIR, name);
+  const dir = cloneDir(name);
   await rm(dir, { recursive: true, force: true });
   await execFileAsync("gh", ["repo", "clone", `${OWNER}/${name}`, dir, "--no-upstream", "--", "--depth", "1"]);
   return dir;
+}
+
+// The clone is only needed while claude reads it. Best effort: a killed claude can leave a child holding a file open on Windows, and that
+// must not hide the run's own error. The next cloneRepo of the same name deletes whatever is left first.
+export async function removeClone(name: string): Promise<void> {
+  await rm(cloneDir(name), { recursive: true, force: true }).catch(() => undefined);
 }

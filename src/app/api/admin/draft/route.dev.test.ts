@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateDraft } from "@/lib/admin/claude";
-import { cloneRepo, listRepos, type Repo } from "@/lib/admin/github";
+import { cloneRepo, listRepos, removeClone, type Repo } from "@/lib/admin/github";
 import { POST } from "./route.dev";
 
 // The route is the gate in front of a paid run: it must refuse before anything is listed, cloned or run. gh and claude are mocked, so a
 // test that fails because a check was dropped can't start a real clone or model call. Repo names are made up (the real private ones
 // must not appear in this public repo).
-vi.mock("@/lib/admin/github", () => ({ listRepos: vi.fn(), cloneRepo: vi.fn() }));
+vi.mock("@/lib/admin/github", () => ({ listRepos: vi.fn(), cloneRepo: vi.fn(), removeClone: vi.fn() }));
 vi.mock("@/lib/admin/claude", () => ({ generateDraft: vi.fn() }));
 
 const ORIGIN = "http://127.0.0.1:3000";
@@ -44,12 +44,14 @@ const nothingRan = () => {
   expect(listRepos).not.toHaveBeenCalled();
   expect(cloneRepo).not.toHaveBeenCalled();
   expect(generateDraft).not.toHaveBeenCalled();
+  expect(removeClone).not.toHaveBeenCalled();
 };
 
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(listRepos).mockResolvedValue([repo("demo-app"), repo("notes", { visibility: "PRIVATE" })]);
   vi.mocked(cloneRepo).mockResolvedValue(CLONE);
+  vi.mocked(removeClone).mockResolvedValue(undefined);
   vi.mocked(generateDraft).mockResolvedValue(DRAFT);
 });
 
@@ -166,6 +168,49 @@ describe("POST /api/admin/draft", () => {
       const response = await post({ name: "demo-app" });
       expect(response.status).toBe(200);
       expect(await response.json()).not.toHaveProperty("demoUrl");
+    });
+  });
+
+  // The clone is only needed while claude reads it (a big repo is about 1 GB of temp folder), so it goes whether the run worked or not.
+  describe("the clone folder", () => {
+    it("is deleted after a run, once claude has finished with it", async () => {
+      expect((await post({ name: "demo-app" })).status).toBe(200);
+
+      expect(removeClone).toHaveBeenCalledTimes(1);
+      expect(removeClone).toHaveBeenCalledWith("demo-app");
+      expect(vi.mocked(removeClone).mock.invocationCallOrder[0]).toBeGreaterThan(vi.mocked(generateDraft).mock.invocationCallOrder[0]);
+    });
+
+    it("is deleted after claude fails or times out", async () => {
+      vi.mocked(generateDraft).mockRejectedValue(new Error("claude timed out after 5 minutes and was stopped."));
+      expect((await post({ name: "demo-app" })).status).toBe(500);
+      expect(removeClone).toHaveBeenCalledTimes(1);
+      expect(removeClone).toHaveBeenCalledWith("demo-app");
+    });
+
+    it("is deleted after a clone that failed halfway", async () => {
+      vi.mocked(cloneRepo).mockRejectedValue(new Error("clone failed: early EOF"));
+      expect((await post({ name: "demo-app" })).status).toBe(500);
+      expect(removeClone).toHaveBeenCalledTimes(1);
+      expect(removeClone).toHaveBeenCalledWith("demo-app");
+    });
+
+    // Nothing was cloned for these, so a folder of that name (an earlier run's, say) is not this request's to delete.
+    it.each<[string, () => Promise<Response>]>([
+      ["a bad Origin", () => post({ name: "demo-app" }, "https://example.com")],
+      ["a bad body", () => post({ name: "../x" })],
+      ["a repo that is not listed", () => post({ name: "no-such-repo" })],
+      ["a private repo", () => post({ name: "notes" })],
+      [
+        "a gh failure",
+        () => {
+          vi.mocked(listRepos).mockRejectedValue(new Error("gh auth login"));
+          return post({ name: "demo-app" });
+        },
+      ],
+    ])("is left alone for %s", async (_, request) => {
+      await request();
+      expect(removeClone).not.toHaveBeenCalled();
     });
   });
 

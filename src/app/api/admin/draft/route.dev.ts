@@ -1,6 +1,6 @@
-import { generateDraft } from "@/lib/admin/claude";
+import { generateDraft, type DraftReply } from "@/lib/admin/claude";
 import { parseDraftRequest, type DraftRequest } from "@/lib/admin/draftRequest";
-import { cloneRepo, listRepos } from "@/lib/admin/github";
+import { cloneRepo, listRepos, removeClone } from "@/lib/admin/github";
 import { localOnly } from "@/lib/admin/origin";
 import { isHttpUrl } from "@/lib/projects";
 
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     return reply(400, messageOf(error));
   }
 
+  let cloned: string | undefined; // set once a clone is about to start, so only a folder this request made is deleted
   try {
     // Only exactly PUBLIC passes, and the name has to match a listed repo exactly, as in the publish guard.
     const repo = (await listRepos()).find((candidate) => candidate.name === input.name);
@@ -28,11 +29,16 @@ export async function POST(request: Request) {
       return reply(400, `"${repo.name}" is ${repo.visibility.toLowerCase()}. Only public repositories can be drafted.`);
     }
 
+    cloned = repo.name;
     const draft = await generateDraft(await cloneRepo(repo.name), input.note);
     // The homepage field is free text, and a value that isn't an http(s) URL would make Save fail, so it is left out.
-    return Response.json({ ...draft, repoUrl: repo.url, demoUrl: isHttpUrl(repo.homepageUrl) ? repo.homepageUrl : undefined });
+    const answer: DraftReply = { ...draft, repoUrl: repo.url, demoUrl: isHttpUrl(repo.homepageUrl) ? repo.homepageUrl : undefined };
+    return Response.json(answer);
   } catch (error) {
     // gh missing or logged out, the clone failed, or claude failed or timed out. The message says which.
     return reply(500, messageOf(error));
+  } finally {
+    // The clone is only needed for the run (a big repo is about 1 GB), so it goes whether the run worked or not.
+    if (cloned) await removeClone(cloned);
   }
 }

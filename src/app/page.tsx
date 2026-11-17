@@ -16,7 +16,7 @@ export default async function Home() {
       <p className="mt-4 font-mono text-lg text-accent">{SITE.role}</p>
       <p className="mt-6 max-w-prose text-lg leading-relaxed text-muted">{SITE.bio}</p>
       <div className="mt-10 flex flex-wrap gap-3">
-        <a href={SITE.cv} download className={PRIMARY}>
+        <a href={SITE.cv} download={SITE.cvFileName} className={PRIMARY}>
           Download CV
         </a>
         <a href={`mailto:${SITE.email}`} className={SECONDARY}>

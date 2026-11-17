@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cloneRepo, parseRepos } from "./github";
+import { cloneRepo, parseRepos, removeClone } from "./github";
 
 // cloneRepo deletes a folder and runs gh. Mocked, so a test of its guard can never touch the real disk,
 // even if the guard were removed: the name ".." would otherwise delete os.tmpdir() itself.
@@ -122,5 +122,30 @@ describe("cloneRepo", () => {
 
   it("lets a gh failure through", async () => {
     await expect(cloneRepo("demo-app")).rejects.toThrow("execFile is mocked");
+  });
+});
+
+// The clone is only needed while claude reads it, and a big repo is a lot of disk in the temp folder.
+describe("removeClone", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("deletes the repo's folder in os.tmpdir()/pupo-repos, and nothing else", async () => {
+    await removeClone("demo-app");
+
+    expect(rm).toHaveBeenCalledTimes(1);
+    expect(rm).toHaveBeenCalledWith(path.join(os.tmpdir(), "pupo-repos", "demo-app"), { recursive: true, force: true });
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  // The name becomes a path that is deleted: with ".." it would be os.tmpdir() itself.
+  it.each(["", ".", "..", "../x", "a/b", "a\\b", "a b", "a\nb"])("refuses the repo name %j before deleting anything", async (name) => {
+    await expect(removeClone(name)).rejects.toThrow(/repo name/);
+    expect(rm).not.toHaveBeenCalled();
+  });
+
+  // A killed claude can leave a child process holding a file open on Windows. That must not hide the run's own error.
+  it("ignores a failed delete", async () => {
+    vi.mocked(rm).mockRejectedValueOnce(new Error("EBUSY: resource busy or locked"));
+    await expect(removeClone("demo-app")).resolves.toBeUndefined();
   });
 });
