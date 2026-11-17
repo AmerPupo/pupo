@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# a crash in the middle of an admin save leaves this behind
+content/*.tmp
+
 # debug
 npm-debug.log*
 yarn-debug.log*
