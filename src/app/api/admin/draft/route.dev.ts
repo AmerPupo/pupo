@@ -1,7 +1,7 @@
 import { generateDraft } from "@/lib/admin/claude";
 import { parseDraftRequest, type DraftRequest } from "@/lib/admin/draftRequest";
 import { cloneRepo, listRepos } from "@/lib/admin/github";
-import { isLocalOrigin } from "@/lib/admin/origin";
+import { localOnly } from "@/lib/admin/origin";
 import { isHttpUrl } from "@/lib/projects";
 
 const reply = (status: number, error: string) => Response.json({ error }, { status });
@@ -10,9 +10,8 @@ const messageOf = (error: unknown) => (error instanceof Error ? error.message : 
 // POST { name, note? } drafts the portfolio entry for one public repo. The checks run in a fixed order, and nothing is cloned until all of them pass.
 // Nothing is saved here either: the admin page puts the draft in its editor, and Save (the PUT route) is what writes the file.
 export async function POST(request: Request) {
-  if (!isLocalOrigin(request.headers.get("origin"))) {
-    return reply(403, "Admin requests must come from a page on http://localhost or http://127.0.0.1.");
-  }
+  const forbidden = localOnly(request);
+  if (forbidden) return forbidden;
 
   let input: DraftRequest;
   try {

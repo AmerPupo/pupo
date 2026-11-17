@@ -1,5 +1,5 @@
 import { listRepos } from "@/lib/admin/github";
-import { isLocalOrigin } from "@/lib/admin/origin";
+import { localOnly } from "@/lib/admin/origin";
 import { publishedButNotPublic } from "@/lib/admin/publish";
 import { writeProjects } from "@/lib/admin/writeProjects";
 import { parseProjects, type Project } from "@/lib/projects";
@@ -9,9 +9,8 @@ const messageOf = (error: unknown) => (error instanceof Error ? error.message : 
 
 // The page sends the whole list and this replaces the whole file. The checks run in a fixed order, and nothing is written until all of them pass.
 export async function PUT(request: Request) {
-  if (!isLocalOrigin(request.headers.get("origin"))) {
-    return reply(403, "Admin requests must come from a page on http://localhost or http://127.0.0.1.");
-  }
+  const forbidden = localOnly(request);
+  if (forbidden) return forbidden;
 
   let projects: Project[];
   try {

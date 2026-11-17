@@ -10,6 +10,7 @@ vi.mock("@/lib/admin/github", () => ({ listRepos: vi.fn(), cloneRepo: vi.fn() })
 vi.mock("@/lib/admin/claude", () => ({ generateDraft: vi.fn() }));
 
 const ORIGIN = "http://127.0.0.1:3000";
+const HOST = "127.0.0.1:3000";
 const CLONE = "/tmp/pupo-repos/demo-app";
 const DRAFT = { name: "Demo App", tagline: "A demo.", description: "I built a demo.", tech: ["TypeScript"] };
 
@@ -25,10 +26,11 @@ const repo = (name: string, changes: Partial<Repo> = {}): Repo => ({
   ...changes,
 });
 
-// `origin: null` sends no Origin header at all. A string body is sent as it is, so malformed JSON can be tested.
-function post(body: unknown, origin: string | null = ORIGIN) {
+// `origin: null` and `host: null` send no such header at all. A string body is sent as it is, so malformed JSON can be tested.
+function post(body: unknown, origin: string | null = ORIGIN, host: string | null = HOST) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (origin !== null) headers.origin = origin;
+  if (host !== null) headers.host = host;
   return POST(
     new Request(`${ORIGIN}/api/admin/draft`, {
       method: "POST",
@@ -68,6 +70,23 @@ describe("POST /api/admin/draft", () => {
 
     it.each(["http://localhost:3000", "http://127.0.0.1:3217"])("lets %s through", async (origin) => {
       expect((await post({ name: "demo-app" }, origin)).status).toBe(200);
+    });
+  });
+
+  // A page that rebinds its own DNS name to 127.0.0.1 is served under that name, so its Host is foreign even when an Origin looks local.
+  describe("the Host gate", () => {
+    it.each<[string, string | null]>([
+      ["a foreign host", "evil.example:3000"],
+      ["a look-alike host", "localhost.evil.com:3000"],
+      ["no Host", null],
+    ])("answers 403 for a local Origin with %s, and nothing else runs", async (_, host) => {
+      const response = await post("{not json", ORIGIN, host);
+      expect(response.status).toBe(403);
+      nothingRan();
+    });
+
+    it.each(["localhost:3000", "127.0.0.1:3217"])("lets the host %s through", async (host) => {
+      expect((await post({ name: "demo-app" }, ORIGIN, host)).status).toBe(200);
     });
   });
 
