@@ -1,8 +1,13 @@
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
+import { ProjectCard } from "@/components/ProjectCard";
+import { ProjectCarousel } from "@/components/ProjectCarousel";
 import { Typewriter } from "@/components/Typewriter";
+import { getPublishedProjects } from "@/lib/projects";
 import { SITE } from "@/site.config";
 
-export default function Home() {
+export default async function Home() {
+  const projects = await getPublishedProjects();
+
   return (
     <main className="mx-auto w-full max-w-page px-6 py-section">
       <h1 className="text-display font-semibold">
@@ -24,6 +29,13 @@ export default function Home() {
           LinkedIn
         </a>
       </div>
+      {projects.length > 0 && (
+        <ProjectCarousel>
+          {projects.map((project) => (
+            <ProjectCard key={project.slug} project={project} />
+          ))}
+        </ProjectCarousel>
+      )}
     </main>
   );
 }
