@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens. Dark only: neutral near-black like Vercel, one green accent (swap --color-accent to retheme).
+   Contrast on --color-background: foreground 16.9:1, muted 7.7:1, accent 8.7:1 (WCAG AA needs 4.5:1). */
+@theme {
+  --color-background: #0a0a0a;
+  --color-foreground: #ededed;
+  --color-muted: #a1a1a1; /* secondary text */
+  --color-card: #111111; /* raised surfaces: project cards, tags */
+  --color-border: #2e2e2e;
+  --color-accent: #22c55e; /* caret, role line, focus ring */
+
+  /* The hero name is 14 monospace characters, 0.6em each. At 9vw that is 76% of the screen width, so it
+     stays inside the page gutters on any phone. No rem floor: one would clip at a larger default font size. */
+  --text-display: min(9vw, 4.5rem);
+  --text-display--line-height: 1.15;
+
+  --spacing-section: 6rem; /* vertical rhythm between page sections */
+  --container-page: 64rem; /* page content width */
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Typewriter: pure CSS, so the full name is already in the HTML (readable without JS) and
+   shows at once under prefers-reduced-motion. It needs a monospace font (1ch = one character),
+   and <Typewriter> sets --chars to the character count. */
+@keyframes type {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(var(--chars) * 1ch);
+  }
+}
+
+@keyframes caret {
+  from {
+    border-right-color: var(--color-accent);
+  }
+  50%,
+  to {
+    border-right-color: transparent;
+  }
+}
+
+@layer components {
+  .typewriter {
+    display: inline-block;
+    box-sizing: content-box;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom; /* overflow:hidden would otherwise move the baseline to the bottom edge */
+    font-family: var(--font-mono);
+    border-right: 0.08em solid transparent; /* the caret: only the animation makes it visible */
+    animation:
+      type 1.4s steps(var(--chars), end) 0.4s backwards,
+      caret 0.8s step-end 5; /* 4s of blinking, then gone: nothing blinks past 5s (WCAG 2.2.2) */
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .typewriter {
+      animation: none;
+    }
+  }
 }
