@@ -7,7 +7,7 @@ import { isValidSlug } from "../projects";
 
 const execFileAsync = promisify(execFile);
 
-const OWNER = "AmerPupo";
+export const OWNER = "AmerPupo";
 // Outside the project, so ESLint, Vitest and the dev watcher never see cloned code.
 const CLONES_DIR = path.join(os.tmpdir(), "pupo-repos");
 const VISIBILITIES = ["PUBLIC", "PRIVATE", "INTERNAL"] as const;

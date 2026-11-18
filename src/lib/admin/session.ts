@@ -5,6 +5,9 @@ export type Session = { login: string; token: string; exp: number };
 // The __Host- prefix makes browsers accept the cookie only with Secure, Path=/ and no Domain.
 export const SESSION_COOKIE = "__Host-pupo-admin";
 export const SESSION_MS = 8 * 60 * 60 * 1000;
+// Sign-in sets this on the way to GitHub, and the callback must see the same value again.
+export const STATE_COOKIE = "__Host-pupo-oauth-state";
+export const STATE_SECONDS = 10 * 60;
 
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
@@ -45,21 +48,30 @@ export function openSession(sealed: string | null | undefined): Session | null {
   }
 }
 
-function readCookie(header: string | null, name: string): string | undefined {
+export function readCookie(header: string | null, name: string): string | undefined {
   const prefix = `${name}=`;
   return header?.split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix))?.slice(prefix.length);
 }
 
+// A Set-Cookie value that only this host can read or set, and no script can read. Max-Age=0 clears it.
+export const cookieHeader = (name: string, value: string, maxAgeSeconds: number) =>
+  `${name}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+
 const deny = (status: number, error: string) => Response.json({ error }, { status });
+
+// The 403 to return unless a browser sent this write from a page on this site, or null. No session is needed, so sign-out can use it alone.
+export function thisSiteOnly(request: Request): Response | null {
+  const host = request.headers.get("host");
+  if (host !== null && request.headers.get("origin") === `https://${host}`) return null;
+  return deny(403, "Admin writes must come from a page on this site.");
+}
 
 // The gate in front of every remote admin route: the error to return, or the user's GitHub token.
 // A write must come from a page on this site, and that is checked before the cookie is read.
 export function remoteGate(request: Request, { write }: { write: boolean }): Response | string {
   if (write) {
-    const host = request.headers.get("host");
-    if (host === null || request.headers.get("origin") !== `https://${host}`) {
-      return deny(403, "Admin writes must come from a page on this site.");
-    }
+    const forbidden = thisSiteOnly(request);
+    if (forbidden) return forbidden;
   }
   const session = openSession(readCookie(request.headers.get("cookie"), SESSION_COOKIE));
   return session ? session.token : deny(401, "Sign in with GitHub first.");

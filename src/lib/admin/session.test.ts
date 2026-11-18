@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isRemote, openSession, remoteGate, SESSION_COOKIE, sealSession, type Session } from "./session";
+import {
+  cookieHeader,
+  isRemote,
+  openSession,
+  readCookie,
+  remoteGate,
+  SESSION_COOKIE,
+  sealSession,
+  thisSiteOnly,
+  type Session,
+} from "./session";
 
 const SECRET = Buffer.alloc(32, 7).toString("base64");
 const OTHER_SECRET = Buffer.alloc(32, 9).toString("base64");
@@ -232,5 +242,45 @@ describe("remoteGate", () => {
     vi.stubEnv("SESSION_SECRET", undefined);
 
     await expectDenied(remoteGate(request("PUT", headers), WRITE), 401);
+  });
+});
+
+describe("cookieHeader", () => {
+  it("builds a host-only, script-proof cookie", () => {
+    expect(cookieHeader("__Host-x", "abc", 60)).toBe("__Host-x=abc; Max-Age=60; Path=/; HttpOnly; Secure; SameSite=Lax");
+  });
+
+  it("clears with an empty value and Max-Age=0", () => {
+    expect(cookieHeader("__Host-x", "", 0)).toBe("__Host-x=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax");
+  });
+});
+
+describe("readCookie", () => {
+  it.each<[string | null, string | undefined]>([
+    ["a=1; target=yes; b=2", "yes"],
+    ["target=yes", "yes"],
+    ["  target=yes  ", "yes"],
+    ["target=", ""],
+    ["xtarget=no", undefined],
+    ["a=target=no", undefined],
+    ["", undefined],
+    [null, undefined],
+  ])("reads %j as %j", (header, expected) => {
+    expect(readCookie(header, "target")).toBe(expected);
+  });
+});
+
+describe("thisSiteOnly", () => {
+  const request = (headers: Record<string, string>) => new Request(`https://${HOST}/x`, { method: "POST", headers });
+
+  it("lets a request from a page on this site through, as null, without looking at any session", () => {
+    expect(thisSiteOnly(request({ host: HOST, origin: `https://${HOST}` }))).toBeNull();
+  });
+
+  it.each<Record<string, string>>([{}, { host: HOST }, { host: HOST, origin: "https://example.com" }, { origin: "https://null" }])("answers 403 for %j", async (headers) => {
+    const response = thisSiteOnly(request(headers));
+
+    expect(response?.status).toBe(403);
+    expect(await response!.json()).toEqual({ error: "Admin writes must come from a page on this site." });
   });
 });
