@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Project } from "../projects";
-import { moveProject, upsertProject } from "./order";
+import { HOME_LIMIT, moveProject, shownOnHome, upsertProject } from "./order";
 
 function project(slug: string, published = true): Project {
   return {
@@ -25,7 +25,7 @@ describe("moveProject", () => {
     expect(slugs(moveProject([project("a"), project("b"), project("c")], "b", 1))).toEqual(["a", "c", "b"]);
   });
 
-  // The carousel shows published projects only, so a draft in between is not a step. It keeps its own slot.
+  // The home page shows published projects only, so a draft in between is not a step. It keeps its own slot.
   it("skips drafts, which stay where they are", () => {
     const projects = [project("a"), project("draft", false), project("b")];
     expect(slugs(moveProject(projects, "b", -1))).toEqual(["b", "draft", "a"]);
@@ -69,6 +69,27 @@ describe("moveProject", () => {
     const moved = moveProject(projects, "b", -1);
     expect(moved).not.toBe(projects);
     expect(slugs(projects)).toEqual(["a", "b"]);
+  });
+});
+
+describe("shownOnHome", () => {
+  const many = (count: number) => Array.from({ length: count }, (_, i) => project(`p${i + 1}`));
+
+  it("is the first five published projects, in list order", () => {
+    expect(HOME_LIMIT).toBe(5);
+    expect(slugs(shownOnHome(many(7)))).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+  });
+
+  it("keeps everything when there are five or fewer", () => {
+    expect(slugs(shownOnHome(many(5)))).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+    expect(slugs(shownOnHome(many(2)))).toEqual(["p1", "p2"]);
+    expect(shownOnHome([])).toEqual([]);
+  });
+
+  // Drafts don't take a slot: the sixth entry in the file is the fifth published one here.
+  it("counts published projects only", () => {
+    const projects = [project("d1", false), ...many(3), project("d2", false), project("p4"), project("p5"), project("p6")];
+    expect(slugs(shownOnHome(projects))).toEqual(["p1", "p2", "p3", "p4", "p5"]);
   });
 });
 

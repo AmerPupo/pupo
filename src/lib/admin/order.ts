@@ -1,6 +1,11 @@
 import type { Project } from "../projects";
 
-// The array order is the carousel order, and the carousel shows published projects only. So a move swaps with the
+// The home page lists the first HOME_LIMIT published projects. Kept here, not in projects.ts, because the admin runs in the browser.
+export const HOME_LIMIT = 5;
+export const shownOnHome = (projects: Project[]): Project[] =>
+  projects.filter((project) => project.published).slice(0, HOME_LIMIT);
+
+// The array order is the home page order, and the home page shows published projects only. So a move swaps with the
 // nearest published project in that direction, and drafts in between stay in their own slots.
 // Returns null when there is nothing to swap with (a draft, an unknown slug, or already first or last), which the UI uses to disable the button.
 export function moveProject(projects: Project[], slug: string, step: -1 | 1): Project[] | null {

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
+import { shownOnHome } from "@/lib/admin/order";
 import { getPublishedProjects } from "@/lib/projects";
 import { SITE } from "@/site.config";
 
@@ -11,7 +12,7 @@ const ROW_TECH = 3; // the project page lists every technology
 const delay = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
 export default async function Home() {
-  const projects = await getPublishedProjects();
+  const projects = shownOnHome(await getPublishedProjects());
   const words = SITE.name.split(" ");
 
   return (

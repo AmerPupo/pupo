@@ -4,7 +4,7 @@ import path from "node:path";
 export type Project = {
   slug: string; // GitHub repo name; the page is /projects/<slug>
   name: string; // display title
-  tagline: string; // one line for the carousel card, at most MAX_TAGLINE characters
+  tagline: string; // one line for the home page row, at most MAX_TAGLINE characters
   description: string; // plain text, paragraphs separated by a blank line
   tech: string[];
   repoUrl: string;

@@ -4,7 +4,7 @@ import { useState, type ChangeEvent } from "react";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
 import type { DraftReply } from "@/lib/admin/claude";
 import type { Repo } from "@/lib/admin/github";
-import { moveProject, upsertProject } from "@/lib/admin/order";
+import { HOME_LIMIT, moveProject, shownOnHome, upsertProject } from "@/lib/admin/order";
 import type { Project } from "@/lib/projects";
 
 // This runs in the browser, so it may only `import type` from github.ts (child processes) and projects.ts (node:fs).
@@ -76,6 +76,7 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
   // `rev` counts the generations, and the editor is keyed on it, so a new draft resets the form but a Save never remounts it (focus stays on the button).
   const [generated, setGenerated] = useState<Record<string, { project: Project; rev: number }>>({});
   const publicRepos = new Set(repos.filter((repo) => repo.visibility === "PUBLIC").map((repo) => repo.name));
+  const onHome = new Set(shownOnHome(projects).map((project) => project.slug));
   // The saved projects, then drafts whose repo isn't in the file yet.
   const entries = [
     ...projects,
@@ -146,7 +147,9 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
         <h2 id="projects-title" className="text-lg font-semibold">
           Projects
         </h2>
-        <p className="mt-1 text-sm text-muted">The carousel shows the published ones, in this order.</p>
+        <p className="mt-1 text-sm text-muted">
+          The home page shows the first {HOME_LIMIT} published ones, in this order.
+        </p>
         {entries.length === 0 ? (
           <p className="mt-4 text-sm text-muted">No projects yet.</p>
         ) : (
@@ -163,6 +166,9 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
                     <span className={`text-sm ${project.published ? "text-accent" : "text-muted"}`}>
                       {!isSaved ? "unsaved draft" : project.published ? "published" : "draft"}
                     </span>
+                    {isSaved && project.published && !onHome.has(project.slug) && (
+                      <span className={LABEL}>not on the home page</span>
+                    )}
                     {!isPublic && <span className={LABEL}>repo private or missing</span>}
                     {project.published && (
                       <div className="ml-auto flex gap-2">
