@@ -1,40 +1,5 @@
 [
   {
-    "slug": "Knjigoteka-RS2",
-    "name": "Knjigoteka",
-    "tagline": "Bookstore and library system with an ASP.NET Core API, Flutter desktop and mobile apps, and Stripe.",
-    "description": "Knjigoteka is an information system for bookstores and libraries that digitises ordering, buying, borrowing, reservations and reviews. It has three roles. Admins manage books, branches, employees and restock approvals in a Flutter desktop app. Employees run branch sales and loans in the same app. Customers browse, order, reserve and review books in a Flutter mobile app and pay for orders through Stripe.\n\nI built the backend as a layered ASP.NET Core 8 Web API. It uses EF Core with SQL Server and migrations, and JWT bearer authentication with role-based authorization. It applies migrations and seeds data on startup. Docker Compose runs the API, SQL Server, RabbitMQ and a separate .NET worker service together. Order checkout runs in a serializable transaction that validates central stock before decrementing it.\n\nTwo parts I would highlight. A background job runs every five minutes and expires unclaimed reservations, returns the stock and adds a penalty to the user. When a book is restocked or returned, the API publishes a message to RabbitMQ. A consumer service then emails the customers who asked to be notified, using MailKit. I also used ML.NET matrix factorization on co-purchase data to recommend related books. This was a university project for the Software Development 2 course at FIT Mostar.",
-    "tech": [
-      "C#",
-      "ASP.NET Core",
-      "Entity Framework Core",
-      "SQL Server",
-      "JWT",
-      "RabbitMQ",
-      "Stripe",
-      "ML.NET",
-      "Flutter",
-      "Dart",
-      "Docker"
-    ],
-    "repoUrl": "https://github.com/AmerPupo/Knjigoteka-RS2",
-    "published": true
-  },
-  {
-    "slug": "portfolio",
-    "name": "Previous portfolio site",
-    "tagline": "My earlier portfolio site, built as static HTML and CSS pages on GitHub Pages.",
-    "description": "This is the portfolio site I made before this one. It is a static site written in HTML and CSS and hosted on GitHub Pages, with a home page and two project pages.",
-    "tech": [
-      "HTML",
-      "CSS",
-      "GitHub Pages"
-    ],
-    "repoUrl": "https://github.com/AmerPupo/portfolio",
-    "demoUrl": "https://amerpupo.github.io/portfolio/",
-    "published": false
-  },
-  {
     "slug": "RetinAI-OcularDiseaseRecognition",
     "name": "RetinAI",
     "tagline": "Web app that classifies eye diseases from fundus images plus patient age and sex.",
@@ -56,6 +21,41 @@
       "HTML/CSS"
     ],
     "repoUrl": "https://github.com/AmerPupo/RetinAI-OcularDiseaseRecognition",
+    "published": true
+  },
+  {
+    "slug": "portfolio",
+    "name": "Previous portfolio site",
+    "tagline": "My earlier portfolio site, built as static HTML and CSS pages on GitHub Pages.",
+    "description": "This is the portfolio site I made before this one. It is a static site written in HTML and CSS and hosted on GitHub Pages, with a home page and two project pages.",
+    "tech": [
+      "HTML",
+      "CSS",
+      "GitHub Pages"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/portfolio",
+    "demoUrl": "https://amerpupo.github.io/portfolio/",
+    "published": false
+  },
+  {
+    "slug": "Knjigoteka-RS2",
+    "name": "Knjigoteka",
+    "tagline": "Bookstore and library system with an ASP.NET Core API, Flutter desktop and mobile apps, and Stripe.",
+    "description": "Knjigoteka is an information system for bookstores and libraries that digitises ordering, buying, borrowing, reservations and reviews. It has three roles. Admins manage books, branches, employees and restock approvals in a Flutter desktop app. Employees run branch sales and loans in the same app. Customers browse, order, reserve and review books in a Flutter mobile app and pay for orders through Stripe.\n\nI built the backend as a layered ASP.NET Core 8 Web API. It uses EF Core with SQL Server and migrations, and JWT bearer authentication with role-based authorization. It applies migrations and seeds data on startup. Docker Compose runs the API, SQL Server, RabbitMQ and a separate .NET worker service together. Order checkout runs in a serializable transaction that validates central stock before decrementing it.\n\nTwo parts I would highlight. A background job runs every five minutes and expires unclaimed reservations, returns the stock and adds a penalty to the user. When a book is restocked or returned, the API publishes a message to RabbitMQ. A consumer service then emails the customers who asked to be notified, using MailKit. I also used ML.NET matrix factorization on co-purchase data to recommend related books. This was a university project for the Software Development 2 course at FIT Mostar.",
+    "tech": [
+      "C#",
+      "ASP.NET Core",
+      "Entity Framework Core",
+      "SQL Server",
+      "JWT",
+      "RabbitMQ",
+      "Stripe",
+      "ML.NET",
+      "Flutter",
+      "Dart",
+      "Docker"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/Knjigoteka-RS2",
     "published": true
   },
   {
