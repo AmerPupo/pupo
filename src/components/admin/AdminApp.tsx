@@ -177,6 +177,11 @@ export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: 
 
   async function save(updated: Project, done: string) {
     if (busy) return;
+    const next = upsertProject(projects, updated);
+    if (!next) {
+      setMessage({ slug: updated.slug, text: "No changes to save.", error: false });
+      return;
+    }
     const wasPublished = projects.find((p) => p.slug === updated.slug)?.published;
     const othersPublished = projects.some((p) => p.published && p.slug !== updated.slug);
     // With nothing published, generateStaticParams returns [] and the production build fails, so the old site would stay up.
@@ -186,7 +191,7 @@ export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: 
       );
       if (!ok) return;
     }
-    await commit(updated.slug, upsertProject(projects, updated), done);
+    await commit(updated.slug, next, done);
   }
 
   async function move(slug: string, step: -1 | 1) {

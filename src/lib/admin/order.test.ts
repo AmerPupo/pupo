@@ -98,7 +98,7 @@ describe("upsertProject", () => {
     const edited = { ...project("b"), name: "Edited" };
     const result = upsertProject([project("a"), project("b"), project("c")], edited);
     expect(slugs(result)).toEqual(["a", "b", "c"]);
-    expect(result[1].name).toBe("Edited");
+    expect(result?.[1].name).toBe("Edited");
   });
 
   // A draft that was just generated is not in the list yet. Replacing by slug alone would drop it, and the save would still look like it worked.
@@ -115,5 +115,34 @@ describe("upsertProject", () => {
     const projects = [project("a")];
     upsertProject(projects, project("new", false));
     expect(slugs(projects)).toEqual(["a"]);
+  });
+
+  // A Save that changes nothing would be an empty commit that rebuilds both sites, so the list comes back as null instead.
+  it("returns null for an entry that is already exactly this (a copy, not the same object)", () => {
+    expect(upsertProject([project("a"), project("b")], { ...project("b") })).toBeNull();
+  });
+
+  // The file gets JSON.stringify's output, which has no key for undefined, so the two are the same file.
+  it("returns null when demoUrl is undefined on one side and absent on the other", () => {
+    const withUndefined = { ...project("a"), demoUrl: undefined };
+    expect(upsertProject([project("a")], withUndefined)).toBeNull();
+    expect(upsertProject([withUndefined], project("a"))).toBeNull();
+  });
+
+  // Each field alone, so a comparison that skips one of them fails here.
+  it.each<[string, Project, Partial<Project>]>([
+    ["name", project("b"), { name: "Other" }],
+    ["tagline", project("b"), { tagline: "Other." }],
+    ["description", project("b"), { description: "Other." }],
+    ["tech", project("b"), { tech: ["TypeScript"] }],
+    ["demoUrl, added", project("b"), { demoUrl: "https://example.com" }],
+    ["demoUrl, removed", { ...project("b"), demoUrl: "https://example.com" }, { demoUrl: undefined }],
+    ["published, on", project("b", false), { published: true }],
+    ["published, off", project("b"), { published: false }],
+  ])("returns the list with the edit when %s changes", (_field, before, change) => {
+    const after = { ...before, ...change };
+    const result = upsertProject([project("a"), before], after);
+    expect(slugs(result)).toEqual(["a", "b"]);
+    expect(result?.[1]).toEqual(after);
   });
 });

@@ -23,8 +23,11 @@ export function moveProject(projects: Project[], slug: string, step: -1 | 1): Pr
 
 // Save replaces the project with the same slug, or appends it. A draft that was just generated is not in the list yet,
 // and replacing by slug alone would drop it while the save still looked like it worked.
-export function upsertProject(projects: Project[], updated: Project): Project[] {
-  return projects.some((project) => project.slug === updated.slug)
-    ? projects.map((project) => (project.slug === updated.slug ? updated : project))
-    : [...projects, updated];
+// Returns null when the entry is already exactly `updated`, so a Save that changes nothing sends nothing (it would be an empty commit that rebuilds both sites).
+// "Exactly" is JSON.stringify, the form the file gets: an undefined demoUrl and an absent one are the same file.
+export function upsertProject(projects: Project[], updated: Project): Project[] | null {
+  const current = projects.find((project) => project.slug === updated.slug);
+  if (!current) return [...projects, updated];
+  if (JSON.stringify(current) === JSON.stringify(updated)) return null;
+  return projects.map((project) => (project.slug === updated.slug ? updated : project));
 }
