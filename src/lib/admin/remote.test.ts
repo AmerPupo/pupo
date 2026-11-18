@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { parseProjects, type Project } from "../projects";
 import contentsFixture from "./fixtures/github/contents-projects.json";
 import userReposFixture from "./fixtures/github/user-repos.json";
-import { GitHubError, gh, listRepos, readProjectsFile } from "./remote";
+import { ConflictError, GitHubError, commitProjects, gh, listRepos, readProjectsFile } from "./remote";
 
 // The fixtures are real GitHub responses with every repo name and value made up (see make-fixtures in the Task 15 notes), so a field GitHub
 // renames shows up here. fetch is stubbed: no test reaches github.com or sends a token.
@@ -281,5 +282,87 @@ describe("readProjectsFile", () => {
       expect(error).toBeInstanceOf(GitHubError);
       expect((error as GitHubError).status).toBe(status);
     }
+  });
+});
+
+describe("commitProjects", () => {
+  const PUT_PATH = "/repos/AmerPupo/pupo/contents/content/projects.json";
+  const NEW_SHA = "9f2c1d0e8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e";
+  // The documented shape of the answer to a Contents PUT (the file's new blob under content, and the commit). Not captured from GitHub,
+  // because a capture would be a real commit on main. The first real save from the phone is the check.
+  const putReply = { content: { name: "projects.json", path: "content/projects.json", sha: NEW_SHA }, commit: { sha: "c0ffee", message: "x" } };
+  const fixtureText = Buffer.from(contentsFixture.content, "base64").toString("utf8");
+  const projects = parseProjects(JSON.parse(fixtureText));
+
+  const sentBody = (mock: ReturnType<typeof stubGitHub>) => JSON.parse(String((mock.mock.calls[0][1] as RequestInit).body)) as Record<string, unknown>;
+  const decoded = (body: Record<string, unknown>) => Buffer.from(String(body.content), "base64").toString("utf8");
+
+  it("PUTs the file to main of the pupo repo with the user's token, and returns the new sha", async () => {
+    const mock = stubGitHub({ [PUT_PATH]: { body: putReply } });
+    const sha = await commitProjects(TOKEN, projects, contentsFixture.sha);
+
+    expect(sha).toBe(NEW_SHA);
+    expect(mock).toHaveBeenCalledTimes(1);
+    const init = mock.mock.calls[0][1] as RequestInit;
+    expect(mock.mock.calls[0][0]).toBe(`https://api.github.com${PUT_PATH}`);
+    expect(init.method).toBe("PUT");
+    expect(new Headers(init.headers).get("authorization")).toBe(`Bearer ${TOKEN}`);
+    expect(new Headers(init.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("sends the page's sha, the branch and the commit message, and no author (so GitHub uses the signed-in user)", async () => {
+    const mock = stubGitHub({ [PUT_PATH]: { body: putReply } });
+    await commitProjects(TOKEN, projects, contentsFixture.sha);
+
+    const body = sentBody(mock);
+    expect(body.sha).toBe(contentsFixture.sha);
+    expect(body.branch).toBe("main");
+    expect(body.message).toBe("content: update projects (admin)");
+    expect(Object.keys(body).sort()).toEqual(["branch", "content", "message", "sha"]);
+  });
+
+  // The file on main is what writeProjects wrote: 2-space JSON and a trailing newline. Same bytes here, so a save changes only the lines that changed.
+  it("writes the same bytes as the file on main, so an unchanged list is an unchanged file", async () => {
+    const mock = stubGitHub({ [PUT_PATH]: { body: putReply } });
+    await commitProjects(TOKEN, projects, contentsFixture.sha);
+
+    expect(decoded(sentBody(mock))).toBe(fixtureText);
+  });
+
+  it("encodes UTF-8 (the name has accents)", async () => {
+    const mock = stubGitHub({ [PUT_PATH]: { body: putReply } });
+    const accented: Project[] = [{ ...projects[0], name: "Jašarević Đ" }];
+    await commitProjects(TOKEN, accented, contentsFixture.sha);
+
+    expect(JSON.parse(decoded(sentBody(mock)))[0].name).toBe("Jašarević Đ");
+  });
+
+  it("turns GitHub's 409 (a stale sha) into a ConflictError", async () => {
+    stubGitHub({ [PUT_PATH]: { status: 409, body: { message: "content/projects.json does not match abc" } } });
+    const error = await commitProjects(TOKEN, projects, "stale").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error).not.toBeInstanceOf(GitHubError);
+  });
+
+  it.each([401, 403, 404, 422, 500])("passes a %s on as a GitHubError, not as a conflict", async (status) => {
+    stubGitHub({ [PUT_PATH]: { status, body: { message: "nope" } } });
+    const error = await commitProjects(TOKEN, projects, contentsFixture.sha).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GitHubError);
+    expect((error as GitHubError).status).toBe(status);
+    expect((error as GitHubError).message).not.toContain(TOKEN);
+  });
+
+  it.each<[string, unknown]>([
+    ["no content", {}],
+    ["no sha", { content: {} }],
+    ["an empty sha", { content: { sha: "" } }],
+    ["a numeric sha", { content: { sha: 5 } }],
+    ["a body that isn't an object", null],
+  ])("fails when GitHub's answer has %s, since the next save would need that sha", async (_, body) => {
+    stubGitHub({ [PUT_PATH]: { body } });
+
+    await expect(commitProjects(TOKEN, projects, contentsFixture.sha)).rejects.toThrow(/new sha/);
   });
 });

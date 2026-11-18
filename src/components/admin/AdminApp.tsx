@@ -57,8 +57,12 @@ async function send<T>(method: "PUT" | "POST", url: string, payload: unknown): P
   return body as T;
 }
 
-// The server answers a save with the list it wrote.
-const putProjects = (projects: Project[]) => send<Project[]>("PUT", "/api/admin/projects", projects);
+// Local mode sends the plain array and gets the list it wrote. On the admin project the page holds the sha of the file it loaded, so the body is
+// { projects, sha } and the answer carries the sha for the next save: GitHub refuses a save made from a stale one. Exported for its test.
+export async function putProjects(projects: Project[], sha: string | undefined): Promise<{ projects: Project[]; sha: string | undefined }> {
+  if (sha === undefined) return { projects: await send<Project[]>("PUT", "/api/admin/projects", projects), sha };
+  return send<{ projects: Project[]; sha: string }>("PUT", "/api/admin/projects", { projects, sha });
+}
 const postDraft = (name: string, note: string) => send<DraftReply>("POST", "/api/admin/draft", { name, note });
 
 // A repo is "added" once projects.json has an entry named after it, and a draft is an entry that isn't published yet.
@@ -68,8 +72,11 @@ function statusOf(repo: Repo, projects: Project[]) {
   return project.published ? "published" : "draft";
 }
 
-export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; projects: Project[] }) {
-  const [projects, setProjects] = useState(initialProjects);
+// `sha` is set on the admin project only (see putProjects).
+export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: { repos: Repo[]; projects: Project[]; sha?: string }) {
+  // The list and the sha it was saved under change together: a save that kept the old sha would be refused on the next one.
+  const [saved, setSaved] = useState({ projects: initialProjects, sha: initialSha });
+  const { projects, sha } = saved;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   // Drafts from Claude, by repo name. They are what an editor starts from, and nothing is saved until Save. An entry stays here after its Save:
@@ -91,7 +98,7 @@ export function AdminApp({ repos, projects: initialProjects }: { repos: Repo[]; 
     setBusy(true);
     setMessage({ slug, text: "Saving…", error: false });
     try {
-      setProjects(await putProjects(next));
+      setSaved(await putProjects(next, sha));
       setMessage({ slug, text: done, error: false });
     } catch (error) {
       setMessage({ slug, text: messageOf(error), error: true });

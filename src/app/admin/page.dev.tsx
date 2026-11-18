@@ -39,12 +39,12 @@ async function remotePage(cookie: string | null) {
     );
   }
 
-  let data: { repos: Repo[]; projects: Project[] } | undefined;
+  let data: { repos: Repo[]; projects: Project[]; sha: string } | undefined;
   let error = "";
   let revoked = false;
   try {
     const [repos, file] = await Promise.all([listRemoteRepos(session.token), readProjectsFile(session.token)]);
-    data = { repos, projects: file.projects };
+    data = { repos, projects: file.projects, sha: file.sha };
   } catch (e) {
     error = messageOf(e);
     // GitHub answers 401 for a token that was revoked or has expired, and only a new sign-in fixes that.

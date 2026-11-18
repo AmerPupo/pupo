@@ -68,6 +68,9 @@ export function parseProjects(raw: unknown): Project[] {
   });
 }
 
+// The one file format, for the local write and the online commit: 2-space indent and a trailing newline keep the git diff down to the lines that changed.
+export const serializeProjects = (projects: Project[]) => `${JSON.stringify(projects, null, 2)}\n`;
+
 // Read on every call (not imported as a JSON module), so an admin write shows up in dev without a restart.
 export async function readProjects(): Promise<Project[]> {
   return parseProjects(JSON.parse(await readFile(PROJECTS_FILE, "utf8")));

@@ -1,4 +1,4 @@
-import { parseProjects, type Project } from "../projects";
+import { parseProjects, serializeProjects, type Project } from "../projects";
 import { OWNER, parseRepos, type Repo } from "./github";
 
 const API = "https://api.github.com";
@@ -13,6 +13,13 @@ export class GitHubError extends Error {
     body: string,
   ) {
     super(`GitHub answered ${status}: ${body.slice(0, 200)}`);
+  }
+}
+
+// A save whose sha is no longer the file's: projects.json changed on main since the page loaded.
+export class ConflictError extends Error {
+  constructor() {
+    super("content/projects.json changed on main since this page loaded.");
   }
 }
 
@@ -63,4 +70,28 @@ export async function readProjectsFile(token: string): Promise<{ projects: Proje
     throw new Error(`GitHub's answer for ${PROJECTS_PATH} was not a base64 file with a sha.`);
   }
   return { projects: parseProjects(JSON.parse(Buffer.from(file.content, "base64").toString("utf8"))), sha: file.sha };
+}
+
+// One commit on main that replaces projects.json, and the file's new sha. The commit is authored by the token's user (no author is sent),
+// and GitHub refuses it when `sha` is not the file's current one, which is what stops a stale page from overwriting a newer edit.
+export async function commitProjects(token: string, projects: Project[], sha: string): Promise<string> {
+  let saved: { content?: { sha?: unknown } } | null;
+  try {
+    saved = await gh(token, `/repos/${OWNER}/${REPO}/contents/${PROJECTS_PATH}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "content: update projects (admin)",
+        content: Buffer.from(serializeProjects(projects), "utf8").toString("base64"),
+        sha,
+        branch: BRANCH,
+      }),
+    });
+  } catch (error) {
+    if (error instanceof GitHubError && error.status === 409) throw new ConflictError();
+    throw error;
+  }
+  const next = saved?.content?.sha;
+  if (typeof next !== "string" || next === "") throw new Error("GitHub committed the file but its answer had no new sha. Reload the page.");
+  return next;
 }

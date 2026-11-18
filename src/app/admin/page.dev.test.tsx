@@ -68,6 +68,13 @@ describe("the admin page", () => {
     expect(readProjects).not.toHaveBeenCalled();
   });
 
+  it("gives the app no sha, so it saves the plain array as before", async () => {
+    asHost("localhost:3000");
+    renderToStaticMarkup(await AdminPage());
+
+    expect(vi.mocked(AdminApp).mock.calls[0][0]).toEqual({ repos: [], projects: [] });
+  });
+
   it("says it is dev only, and has no sign-in or sign-out", async () => {
     asHost("localhost:3000");
     const markup = renderToStaticMarkup(await AdminPage());
@@ -139,7 +146,8 @@ describe("the admin page on the admin project (ADMIN=1)", () => {
 
       expect(listRemoteRepos).toHaveBeenCalledWith(TOKEN);
       expect(readProjectsFile).toHaveBeenCalledWith(TOKEN);
-      expect(vi.mocked(AdminApp).mock.calls[0][0]).toEqual({ repos, projects });
+      // The sha is what the next save has to send back, or GitHub refuses it.
+      expect(vi.mocked(AdminApp).mock.calls[0][0]).toEqual({ repos, projects, sha: "abc123" });
       expect(markup).toMatch(/<h1[^>]*>Admin<\/h1>/);
       expect(markup).not.toContain("dev only");
       expect(markup).not.toContain("Sign in with GitHub");
