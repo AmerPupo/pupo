@@ -83,7 +83,8 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 // The local server answers the POST with the draft. The admin project answers 202 { id }, because the draft is made by a GitHub Actions run,
 // and the page asks about that run every POLL_MS until the draft comes, `onPending` hearing about each wait (with the run's URL once it has one).
 // Counting asks, not minutes, means a phone that sleeps the tab only pauses the wait. A 502 (GitHub having a bad moment) and a lost connection are
-// asked again, since the run goes on without us. Exported for its test.
+// asked again, since the run goes on without us. So is any 5xx above 500: the route answers 500 for a failed run (which stops here) and 502 for GitHub,
+// so a 503 or 504 comes from the host (Vercel ends a function that runs too long with a 504). Exported for its test.
 export async function requestDraft(name: string, note: string, onPending: (runUrl?: string) => void, wait = delay): Promise<DraftReply> {
   const started = await call("POST", "/api/admin/draft", { name, note });
   if (!started.ok) throw failure(started);
@@ -97,7 +98,7 @@ export async function requestDraft(name: string, note: string, onPending: (runUr
   for (let asks = 0; asks < GIVE_UP_POLLS; asks++) {
     await wait(POLL_MS);
     const answer = await call("GET", `/api/admin/draft?${query}`).catch(() => null);
-    if (answer === null || answer.status === 502) continue;
+    if (answer === null || answer.status >= 502) continue;
     if (answer.status === 202) {
       runUrl = (answer.body as { runUrl?: string }).runUrl;
       onPending(runUrl);

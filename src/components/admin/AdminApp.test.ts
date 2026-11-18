@@ -140,8 +140,11 @@ describe("requestDraft", () => {
   });
 
   // GitHub having a bad moment, or a phone losing signal, is no reason to throw away a run that is still going.
+  // The route never answers 503 or 504 itself: they come from the host, and a function that hit Vercel's time limit gets a 504 with no JSON.
   it.each<[string, Answer]>([
     ["a 502", { status: 502, body: { error: "GitHub answered 503: unavailable" } }],
+    ["a 503 from the host", { status: 503, body: null }],
+    ["a 504 from the host", { status: 504, body: null }],
     ["a lost connection", new TypeError("Failed to fetch")],
   ])("asks again after %s", async (_, trouble) => {
     const mock = stubAnswers(started, trouble, { body: REPLY });
