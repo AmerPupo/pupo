@@ -60,12 +60,13 @@ export function childEnv(env: Record<string, string | undefined>): NodeJS.Proces
   return Object.fromEntries(Object.entries(env).filter(([name]) => !/^ANTHROPIC_/i.test(name))) as NodeJS.ProcessEnv;
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
+export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const excerpt = (text: string, limit = 200) => text.trim().slice(0, limit) || "nothing";
 
-function toDraft(value: unknown): Draft {
+// Also checks a draft downloaded from a GitHub Actions artifact (remote.ts), not only what claude printed.
+export function toDraft(value: unknown): Draft {
   const invalid = (problem: string) => new Error(`The draft from claude is invalid: ${problem}.`);
   if (!isObject(value)) throw invalid("it must be an object");
 
