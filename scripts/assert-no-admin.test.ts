@@ -9,7 +9,8 @@ const SCRIPT = fileURLToPath(new URL("./assert-no-admin.mjs", import.meta.url));
 const scratchDirs: string[] = [];
 
 // Runs the guard in a scratch project whose out/ holds `files` (null: no out/ at all).
-function runGuard(files: string[] | null) {
+// ADMIN is set explicitly, so the developer's own environment can't change the result.
+function runGuard(files: string[] | null, admin?: string) {
   const cwd = mkdtempSync(join(tmpdir(), "assert-no-admin-"));
   scratchDirs.push(cwd);
   if (files) {
@@ -20,7 +21,10 @@ function runGuard(files: string[] | null) {
       writeFileSync(path, "");
     }
   }
-  return spawnSync(process.execPath, [SCRIPT], { cwd, encoding: "utf8" });
+  const env = { ...process.env };
+  delete env.ADMIN;
+  if (admin !== undefined) env.ADMIN = admin;
+  return spawnSync(process.execPath, [SCRIPT], { cwd, encoding: "utf8", env });
 }
 
 afterEach(() => {
@@ -61,5 +65,23 @@ describe("assert-no-admin", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("out/ is missing");
+  });
+
+  // The admin project (ADMIN=1) is a server build that has no out/ and is meant to hold the admin.
+  it("skips with a note when ADMIN=1, with or without out/", () => {
+    for (const files of [null, ["index.html", "admin.html"]]) {
+      const result = runGuard(files, "1");
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("skipped");
+      expect(result.stdout).toContain("ADMIN=1");
+    }
+  });
+
+  it.each(["0", "true", ""])("still checks when ADMIN=%j", (value) => {
+    const result = runGuard(["index.html", "admin.html"], value);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("out/admin.html");
   });
 });

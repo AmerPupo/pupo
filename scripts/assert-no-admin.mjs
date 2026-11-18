@@ -3,6 +3,13 @@ import { readdirSync } from "node:fs";
 
 const OUT = "out";
 
+// The admin project builds the same repo with ADMIN=1: a server build with no out/, and the admin is meant to be in it.
+// next.config.ts refuses ADMIN=1 on the public project, so this skip can't switch the guard off there.
+if (process.env.ADMIN === "1") {
+  console.log("assert-no-admin: skipped, ADMIN=1 builds the admin project");
+  process.exit(0);
+}
+
 let names;
 try {
   names = readdirSync(OUT);
