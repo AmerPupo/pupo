@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Project } from "@/lib/projects";
-import { putProjects, requestDraft } from "./AdminApp";
+import { putProjects, requestDraft } from "./api";
 
 const project = (slug: string): Project => ({
   slug,
