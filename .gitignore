@@ -47,3 +47,4 @@ next-env.d.ts
 /tasks/
 /docs/
 /SPEC.md
+/SPEC-*.md

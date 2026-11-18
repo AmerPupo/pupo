@@ -1,0 +1,81 @@
+# Drafts a portfolio entry for one public AmerPupo repo with the same generateDraft the local admin uses.
+# Started only through the API (workflow_dispatch). Never add push, pull_request or other triggers: this job holds the Claude token.
+name: Draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Name of a public AmerPupo repo
+        required: true
+        type: string
+      note:
+        description: Optional note for the draft, 500 characters at most
+        required: false
+        type: string
+        default: ""
+      request_id:
+        description: UUID the admin uses to find this run's artifact
+        required: true
+        type: string
+
+run-name: draft ${{ inputs.repo }} ${{ inputs.request_id }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: draft-${{ inputs.repo }}
+  cancel-in-progress: true
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Inputs reach the shell only through env, never as ${{ }} inside run:.
+    env:
+      REPO: ${{ inputs.repo }}
+      NOTE: ${{ inputs.note }}
+      REQUEST_ID: ${{ inputs.request_id }}
+    steps:
+      - name: Check the inputs
+        run: |
+          [[ "$REPO" =~ ^[A-Za-z0-9._-]+$ && "$REPO" != . && "$REPO" != .. ]] || { echo "::error::repo is not a valid repo name"; exit 1; }
+          [[ "$REQUEST_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "::error::request_id is not a UUID"; exit 1; }
+          (( ${#NOTE} <= 500 )) || { echo "::error::note is longer than 500 characters"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The CLI's postinstall links its native binary, so scripts must run for this one package. Same version as the local admin.
+      - name: Install the claude CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.327
+
+      # No token, so a private repo can't be cloned here. Symlinks stay plain files so a repo can't point Read outside the clone.
+      - name: Clone the repo
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+        run: git clone --depth 1 -c core.symlinks=false "https://github.com/AmerPupo/$REPO" "$RUNNER_TEMP/clone"
+
+      - name: Draft
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLONE_DIR: ${{ runner.temp }}/clone
+        # shortcut: jiti is only a transitive dependency (eslint, vitest, tailwind), so if it disappears add tsx as a devDependency
+        run: node_modules/.bin/jiti scripts/draft.ts
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: draft-${{ inputs.request_id }}
+          path: draft.json
+          retention-days: 1
+          if-no-files-found: error
