@@ -1,0 +1,25 @@
+{
+  "total_count": 1,
+  "artifacts": [
+    {
+      "id": 14440811233,
+      "node_id": "MDg6QXJ0aWZhY3QxNDQ0MDgxMTIzMw==",
+      "name": "draft-2d5353c2-8075-448a-9866-e087b6fd185f.json",
+      "size_in_bytes": 1526,
+      "url": "https://api.github.com/repos/AmerPupo/pupo/actions/artifacts/14440811233",
+      "archive_download_url": "https://api.github.com/repos/AmerPupo/pupo/actions/artifacts/14440811233/zip",
+      "expired": false,
+      "digest": "sha256:84d4e047d36a39cb4f6b24150b66c221f186d28a5c6737f0722e9113bb3af09a",
+      "created_at": "2026-11-18T15:17:15Z",
+      "updated_at": "2026-11-18T15:17:15Z",
+      "expires_at": "2026-11-19T15:17:14Z",
+      "workflow_run": {
+        "id": 44333477534,
+        "repository_id": 1461827089,
+        "head_repository_id": 1461827089,
+        "head_branch": "remote-admin",
+        "head_sha": "aa7b4259634d6bda8b12af3a45a0885307aedda7"
+      }
+    }
+  ]
+}

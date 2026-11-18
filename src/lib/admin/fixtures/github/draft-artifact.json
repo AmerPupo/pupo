@@ -1,0 +1,17 @@
+{
+  "name": "CareFall",
+  "tagline": "An ESP8266 fall detector that alerts a Firebase-backed progressive web app.",
+  "description": "The part I would highlight is the grace-period logic. When the sensor flags a fall, the device switches on an LED and buzzer and waits for a delay the user sets in the app, read live from Firebase Realtime Database. If the person presses the button on the device within that window, the alarm is cleared and nothing is reported. Otherwise the device writes a FallDetected flag to Firebase, and the web app shows a notification. The delay can be set from 0 to 60 seconds in 10-second steps for each device.\n\nI built both halves of this IoT project. The firmware is C++ on an ESP8266 with an MPU6050 accelerometer and gyroscope. It uses the sensor's motion interrupt and combines the acceleration and gyro readings on each axis into one score, which it compares against a threshold that is easy to change. The companion app is plain HTML, CSS and JavaScript, installable as a progressive web app with a manifest and service worker, and it talks to Firebase through the JavaScript SDK. In it you can add a device by its code, rename it, set its delay, mark it active or inactive, and remove it. The app checks the database every 200 ms and sends a browser notification when a fall is flagged. It is a working prototype: the device ID in the firmware is hardcoded.",
+  "tech": [
+    "C++",
+    "Arduino",
+    "ESP8266",
+    "MPU6050",
+    "Firebase Realtime Database",
+    "JavaScript",
+    "HTML",
+    "CSS",
+    "Progressive Web App",
+    "Service Workers"
+  ]
+}
