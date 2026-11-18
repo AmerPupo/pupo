@@ -56,7 +56,7 @@ async function signIn(request: Request): Promise<Response> {
   } catch (error) {
     return reply(500, messageOf(error)); // SESSION_SECRET missing or the wrong size
   }
-  const headers = new Headers({ Location: new URL("/admin", request.url).toString() });
+  const headers = new Headers({ Location: "/admin" });
   headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, sealed, SESSION_MS / 1000));
   return new Response(null, { status: 302, headers });
 }

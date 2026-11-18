@@ -1,0 +1,18 @@
+{
+  "name": "projects.json",
+  "path": "content/projects.json",
+  "sha": "d2f7dd392541c9b0aab552667db8977b26c425a4",
+  "size": 1013,
+  "url": "https://api.github.com/repos/AmerPupo/pupo/contents/content/projects.json?ref=main",
+  "html_url": "https://github.com/AmerPupo/pupo/blob/main/content/projects.json",
+  "git_url": "https://api.github.com/repos/AmerPupo/pupo/git/blobs/d2f7dd392541c9b0aab552667db8977b26c425a4",
+  "download_url": "https://raw.githubusercontent.com/AmerPupo/pupo/main/content/projects.json",
+  "type": "file",
+  "content": "WwogIHsKICAgICJzbHVnIjogImRlbW8tYXBwIiwKICAgICJuYW1lIjogIkRl\nbW8gQXBwIiwKICAgICJ0YWdsaW5lIjogIkRlbW8gQXBwIGlzIGEgbWFkZS11\ncCBwcm9qZWN0IGZvciB0ZXN0cy4iLAogICAgImRlc2NyaXB0aW9uIjogIkkg\nYnVpbHQgRGVtbyBBcHAuXG5cbkl0IGV4aXN0cyBvbmx5IGluIGEgdGVzdCBm\naXh0dXJlLiIsCiAgICAidGVjaCI6IFsKICAgICAgIlR5cGVTY3JpcHQiLAog\nICAgICAiTmV4dC5qcyIKICAgIF0sCiAgICAicmVwb1VybCI6ICJodHRwczov\nL2dpdGh1Yi5jb20vQW1lclB1cG8vZGVtby1hcHAiLAogICAgImRlbW9Vcmwi\nOiAiaHR0cHM6Ly9kZW1vLmV4YW1wbGUub3JnIiwKICAgICJwdWJsaXNoZWQi\nOiB0cnVlCiAgfSwKICB7CiAgICAic2x1ZyI6ICJ0b29scyIsCiAgICAibmFt\nZSI6ICJUb29scyIsCiAgICAidGFnbGluZSI6ICJUb29scyBpcyBhIG1hZGUt\ndXAgcHJvamVjdCBmb3IgdGVzdHMuIiwKICAgICJkZXNjcmlwdGlvbiI6ICJJ\nIGJ1aWx0IFRvb2xzLlxuXG5JdCBleGlzdHMgb25seSBpbiBhIHRlc3QgZml4\ndHVyZS4iLAogICAgInRlY2giOiBbCiAgICAgICJUeXBlU2NyaXB0IiwKICAg\nICAgIk5leHQuanMiCiAgICBdLAogICAgInJlcG9VcmwiOiAiaHR0cHM6Ly9n\naXRodWIuY29tL0FtZXJQdXBvL3Rvb2xzIiwKICAgICJwdWJsaXNoZWQiOiB0\ncnVlCiAgfSwKICB7CiAgICAic2x1ZyI6ICJvbGQtZm9yayIsCiAgICAibmFt\nZSI6ICJPbGQgRm9yayIsCiAgICAidGFnbGluZSI6ICJPbGQgRm9yayBpcyBh\nIG1hZGUtdXAgcHJvamVjdCBmb3IgdGVzdHMuIiwKICAgICJkZXNjcmlwdGlv\nbiI6ICJJIGJ1aWx0IE9sZCBGb3JrLlxuXG5JdCBleGlzdHMgb25seSBpbiBh\nIHRlc3QgZml4dHVyZS4iLAogICAgInRlY2giOiBbCiAgICAgICJUeXBlU2Ny\naXB0IiwKICAgICAgIk5leHQuanMiCiAgICBdLAogICAgInJlcG9VcmwiOiAi\naHR0cHM6Ly9naXRodWIuY29tL0FtZXJQdXBvL29sZC1mb3JrIiwKICAgICJw\ndWJsaXNoZWQiOiBmYWxzZQogIH0KXQo=\n",
+  "encoding": "base64",
+  "_links": {
+    "self": "https://api.github.com/repos/AmerPupo/pupo/contents/content/projects.json?ref=main",
+    "git": "https://api.github.com/repos/AmerPupo/pupo/git/blobs/f845ac74c7a1542646ab630200da45e9e27e2a7d",
+    "html": "https://github.com/AmerPupo/pupo/blob/main/content/projects.json"
+  }
+}

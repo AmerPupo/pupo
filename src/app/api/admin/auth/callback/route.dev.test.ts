@@ -161,7 +161,8 @@ describe("callback", () => {
     const cookies = setCookies(response);
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe(`${SITE}/admin`);
+    // Relative on purpose: behind a proxy request.url can carry the wrong host or scheme, and a relative Location can't.
+    expect(response.headers.get("location")).toBe("/admin");
 
     expect(cookies).toHaveLength(2);
     const session = sessionCookieSet(response)!;
@@ -299,7 +300,7 @@ describe("logout", () => {
       const cookies = setCookies(response);
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(`${SITE}/admin`);
+      expect(response.headers.get("location")).toBe("/admin");
       expect(cookies).toHaveLength(1);
       expectFlags(cookies[0], SESSION_COOKIE, 0);
       expect(cookies[0].startsWith(`${SESSION_COOKIE}=;`)).toBe(true);
