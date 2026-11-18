@@ -24,6 +24,20 @@
     "published": true
   },
   {
+    "slug": "portfolio",
+    "name": "Previous portfolio site",
+    "tagline": "My earlier portfolio site, built as static HTML and CSS pages on GitHub Pages.",
+    "description": "This is the portfolio site I made before this one. It is a static site written in HTML and CSS and hosted on GitHub Pages, with a home page and two project pages.",
+    "tech": [
+      "HTML",
+      "CSS",
+      "GitHub Pages"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/portfolio",
+    "demoUrl": "https://amerpupo.github.io/portfolio/",
+    "published": true
+  },
+  {
     "slug": "Knjigoteka-RS2",
     "name": "Knjigoteka",
     "tagline": "Bookstore and library system with an ASP.NET Core API, Flutter desktop and mobile apps, and Stripe.",
@@ -42,20 +56,6 @@
       "Docker"
     ],
     "repoUrl": "https://github.com/AmerPupo/Knjigoteka-RS2",
-    "published": true
-  },
-  {
-    "slug": "portfolio",
-    "name": "Previous portfolio site",
-    "tagline": "My earlier portfolio site, built as static HTML and CSS pages on GitHub Pages.",
-    "description": "This is the portfolio site I made before this one. It is a static site written in HTML and CSS and hosted on GitHub Pages, with a home page and two project pages.",
-    "tech": [
-      "HTML",
-      "CSS",
-      "GitHub Pages"
-    ],
-    "repoUrl": "https://github.com/AmerPupo/portfolio",
-    "demoUrl": "https://amerpupo.github.io/portfolio/",
     "published": true
   },
   {
