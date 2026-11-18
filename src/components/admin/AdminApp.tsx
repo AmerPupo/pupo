@@ -11,7 +11,11 @@ import type { Project } from "@/lib/projects";
 // Anything it imports as a value, like order.ts, has to stay free of Node modules.
 
 const LABEL = "ml-2 rounded border border-border px-1.5 py-0.5 text-xs font-normal text-muted";
-const FIELD = "mt-1 block w-full rounded-md border border-border bg-card px-3 py-2 text-sm";
+// text-base on phones: iOS Safari zooms the page into any field under 16px when it gets focus.
+const FIELD = "mt-1 block w-full rounded-md border border-border bg-card px-3 py-2 text-base sm:text-sm";
+// Phones show only Repository, Status and Action; visibility moves into the Repository cell as a label.
+const WIDE = "max-sm:hidden";
+const CELL = "py-3 pr-3 sm:pr-6";
 // aria-disabled, not disabled, for a request in flight and for an arrow with nowhere to go: a button that becomes disabled
 // drops keyboard focus. The handlers ignore the click, so it does nothing.
 const DISABLED = "disabled:pointer-events-none disabled:opacity-40 aria-disabled:opacity-40";
@@ -281,19 +285,19 @@ export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: 
         <table className="mt-4 w-full text-left text-sm">
           <thead className="text-muted">
             <tr className="border-b border-border">
-              <th scope="col" className="py-2 pr-6 font-medium">
+              <th scope="col" className="py-2 pr-3 font-medium sm:pr-6">
                 Repository
               </th>
-              <th scope="col" className="py-2 pr-6 font-medium">
+              <th scope="col" className={`py-2 pr-6 font-medium ${WIDE}`}>
                 Visibility
               </th>
-              <th scope="col" className="py-2 pr-6 font-medium">
+              <th scope="col" className={`py-2 pr-6 font-medium ${WIDE}`}>
                 Language
               </th>
-              <th scope="col" className="py-2 pr-6 font-medium">
+              <th scope="col" className={`py-2 pr-6 font-medium ${WIDE}`}>
                 Updated
               </th>
-              <th scope="col" className="py-2 pr-6 font-medium">
+              <th scope="col" className="py-2 pr-3 font-medium sm:pr-6">
                 Status
               </th>
               <th scope="col" className="py-2 font-medium">
@@ -306,14 +310,17 @@ export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: 
               const status = statusOf(repo, projects);
               return (
                 <tr key={repo.name} className="border-b border-border">
-                  <th scope="row" className="py-3 pr-6 text-left font-medium wrap-anywhere">
+                  <th scope="row" className={`${CELL} text-left font-medium wrap-anywhere`}>
                     <a href={repo.url} target="_blank" className="hover:underline">
                       {repo.name}
                     </a>
+                    {repo.visibility !== "PUBLIC" && (
+                      <span className={`${LABEL} sm:hidden`}>{repo.visibility.toLowerCase()}</span>
+                    )}
                     {repo.isFork && <span className={LABEL}>fork</span>}
                     {repo.isArchived && <span className={LABEL}>archived</span>}
                   </th>
-                  <td className="py-3 pr-6">
+                  <td className={`py-3 pr-6 ${WIDE}`}>
                     {repo.visibility !== "PUBLIC" && (
                       <>
                         <span role="img" aria-label="locked">
@@ -323,11 +330,11 @@ export function AdminApp({ repos, projects: initialProjects, sha: initialSha }: 
                     )}
                     <span className="capitalize">{repo.visibility.toLowerCase()}</span>
                   </td>
-                  <td className="py-3 pr-6">{repo.primaryLanguage?.name ?? "none"}</td>
-                  <td className="py-3 pr-6">
+                  <td className={`py-3 pr-6 ${WIDE}`}>{repo.primaryLanguage?.name ?? "none"}</td>
+                  <td className={`py-3 pr-6 ${WIDE}`}>
                     <time dateTime={repo.updatedAt}>{repo.updatedAt.slice(0, 10)}</time>
                   </td>
-                  <td className={`py-3 pr-6 ${status === "published" ? "text-accent" : ""}`}>{status}</td>
+                  <td className={`${CELL} ${status === "published" ? "text-accent" : ""}`}>{status}</td>
                   <td className="py-3">
                     {/* Only public repos can be drafted (the server checks too). Once a draft exists, its item has Regenerate. */}
                     {status === "not added" && repo.visibility === "PUBLIC" && !generated[repo.name] && (
@@ -477,7 +484,7 @@ function MessageLine({ message }: { message: Message }) {
       className={
         message.error
           ? "mt-3 rounded-md border border-border bg-card p-3 text-sm whitespace-pre-wrap wrap-anywhere"
-          : "mt-3 text-sm text-muted"
+          : "mt-3 text-sm text-muted wrap-anywhere"
       }
     >
       {/* split with a capturing group puts the matches at the odd places */}
