@@ -115,5 +115,20 @@
     "repoUrl": "https://github.com/AmerPupo/Echelon",
     "demoUrl": "https://www.youtube.com/watch?v=pXD7qZu1uOE",
     "published": true
+  },
+  {
+    "slug": "HotelManagementApp",
+    "name": "Hotel Pupo",
+    "tagline": "A Windows desktop app for hotel room browsing, reservations and staff management, built in C#.",
+    "description": "Hotel Pupo is a desktop application for running a small hotel. It has two entry points from the welcome screen: a staff login and a \"continue as guest\" mode. Staff sign in with credentials checked against an Employees table, then reach a menu for managing guests, employees, rooms and reservations. Each of those screens supports adding, updating, deleting, searching and refreshing records, and double-clicking a row in the grid loads it back into the form for editing.\n\nGuests can look through the four room types without logging in: a standard double, a double with separate beds, a double with a lake view and a single with a lake view. Hovering over a room shows its amenities, and a button opens a picture gallery with next and previous controls. From there a guest can start a reservation. The form lists only the free rooms of that type, asks for name, phone number, party size and arrival and departure dates (chosen with calendar pickers), then saves the guest and the reservation and marks the room as occupied.\n\nI built it in C# with Windows Forms on .NET Framework 3.5, with 16 forms in the project. Data is stored in a Microsoft Access database accessed through ADO.NET (OleDb and a typed DataSet with table adapters). What I would highlight is that it covers the whole workflow end to end, from browsing rooms to a booking that updates room availability, with a separate staff back office for the underlying data.",
+    "tech": [
+      "C#",
+      ".NET Framework 3.5",
+      "Windows Forms",
+      "ADO.NET",
+      "Microsoft Access"
+    ],
+    "repoUrl": "https://github.com/AmerPupo/HotelManagementApp",
+    "published": false
   }
 ]
