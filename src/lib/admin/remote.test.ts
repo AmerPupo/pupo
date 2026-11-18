@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseProjects, type Project } from "../projects";
+import artifactsEmptyFixture from "./fixtures/github/artifacts-list-empty.json";
+import artifactsFixture from "./fixtures/github/artifacts-list.json";
 import contentsFixture from "./fixtures/github/contents-projects.json";
+import draftArtifactFixture from "./fixtures/github/draft-artifact.json";
+import runsInProgressFixture from "./fixtures/github/runs-list-in-progress.json";
+import runsFixture from "./fixtures/github/runs-list.json";
 import userReposFixture from "./fixtures/github/user-repos.json";
-import { ConflictError, GitHubError, commitProjects, gh, listRepos, readProjectsFile } from "./remote";
+import { ConflictError, GitHubError, commitProjects, dispatchDraft, findDraft, gh, listRepos, readProjectsFile } from "./remote";
 
 // The fixtures are real GitHub responses with every repo name and value made up (see make-fixtures in the Task 15 notes), so a field GitHub
 // renames shows up here. fetch is stubbed: no test reaches github.com or sends a token.
@@ -364,5 +369,225 @@ describe("commitProjects", () => {
     stubGitHub({ [PUT_PATH]: { body } });
 
     await expect(commitProjects(TOKEN, projects, contentsFixture.sha)).rejects.toThrow(/new sha/);
+  });
+});
+
+describe("dispatchDraft", () => {
+  const DISPATCH_PATH = "/repos/AmerPupo/pupo/actions/workflows/draft.yml/dispatches";
+  const ID = "2d5353c2-8075-448a-9866-e087b6fd185f";
+
+  // GitHub answers a dispatch with 204 and no body (the default API version, see the Task 12 spike).
+  function stubDispatch(status = 204) {
+    const mock = vi.fn<typeof fetch>(async () => (status === 204 ? new Response(null, { status }) : Response.json({ message: "nope" }, { status })));
+    vi.stubGlobal("fetch", mock);
+    return mock;
+  }
+  const sent = (mock: ReturnType<typeof stubDispatch>) => JSON.parse(String((mock.mock.calls[0][1] as RequestInit).body)) as Record<string, unknown>;
+
+  it("POSTs to the draft workflow of the pupo repo with the user's token", async () => {
+    const mock = stubDispatch();
+    await dispatchDraft(TOKEN, "CareFall", "focus on the firmware", ID);
+
+    expect(mock).toHaveBeenCalledTimes(1);
+    const init = mock.mock.calls[0][1] as RequestInit;
+    expect(mock.mock.calls[0][0]).toBe(`https://api.github.com${DISPATCH_PATH}`);
+    expect(init.method).toBe("POST");
+    expect(new Headers(init.headers).get("authorization")).toBe(`Bearer ${TOKEN}`);
+    expect(new Headers(init.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("sends exactly the ref main and the three workflow inputs", async () => {
+    const mock = stubDispatch();
+    await dispatchDraft(TOKEN, "CareFall", "focus on the firmware", ID);
+
+    expect(sent(mock)).toEqual({ ref: "main", inputs: { repo: "CareFall", note: "focus on the firmware", request_id: ID } });
+  });
+
+  it.each<[string, string | undefined]>([
+    ["undefined", undefined],
+    ["an empty string", ""],
+  ])("leaves the note out when it is %s, so the workflow's default applies", async (_, note) => {
+    const mock = stubDispatch();
+    await dispatchDraft(TOKEN, "CareFall", note, ID);
+
+    expect(sent(mock)).toEqual({ ref: "main", inputs: { repo: "CareFall", request_id: ID } });
+  });
+
+  it.each([403, 404, 422])("passes GitHub's %s on as a GitHubError, so the route can show its message", async (status) => {
+    stubDispatch(status);
+    const error = await dispatchDraft(TOKEN, "CareFall", undefined, ID).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GitHubError);
+    expect((error as GitHubError).status).toBe(status);
+    expect((error as GitHubError).message).not.toContain(TOKEN);
+  });
+});
+
+describe("findDraft", () => {
+  const RUNS_PATH = "/repos/AmerPupo/pupo/actions/workflows/draft.yml/runs?event=workflow_dispatch&per_page=30";
+  const artifactsPath = (runId: number) => `/repos/AmerPupo/pupo/actions/runs/${runId}/artifacts`;
+  const downloadPath = (artifactId: number) => `/repos/AmerPupo/pupo/actions/artifacts/${artifactId}/zip`;
+
+  // runs-list.json: a failed run, a cancelled one and a successful one, each with the request id its run-name ends in.
+  const FAILED = { id: 44333997350, requestId: "1bbcf203-d3aa-4872-b7aa-693388062c40", url: "https://github.com/AmerPupo/pupo/actions/runs/44333997350" };
+  const CANCELLED = { id: 44332788067, requestId: "9c6504b8-6f9a-46a0-bf3a-0aa6d9002eb6", url: "https://github.com/AmerPupo/pupo/actions/runs/44332788067" };
+  const SUCCESS = { id: 44333477534, requestId: "2d5353c2-8075-448a-9866-e087b6fd185f", url: "https://github.com/AmerPupo/pupo/actions/runs/44333477534" };
+  const ARTIFACT = artifactsFixture.artifacts[0];
+
+  it("finds a successful run by its request id, downloads its artifact and returns the draft", async () => {
+    const mock = stubGitHub({
+      [RUNS_PATH]: { body: runsFixture },
+      [artifactsPath(SUCCESS.id)]: { body: artifactsFixture },
+      [downloadPath(ARTIFACT.id)]: { body: draftArtifactFixture },
+    });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId)).toEqual({ status: "done", draft: draftArtifactFixture });
+    expect(mock.mock.calls.map(([url]) => String(url).replace("https://api.github.com", ""))).toEqual([
+      RUNS_PATH,
+      artifactsPath(SUCCESS.id),
+      downloadPath(ARTIFACT.id),
+    ]);
+    for (const [, init] of mock.mock.calls) expect(new Headers((init as RequestInit).headers).get("authorization")).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("is pending, with no run URL, while the run isn't in the list yet", async () => {
+    const mock = stubGitHub({ [RUNS_PATH]: { body: runsFixture } });
+
+    expect(await findDraft(TOKEN, "00000000-0000-4000-8000-000000000000")).toEqual({ status: "pending" });
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it("is pending with no runs at all", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: { total_count: 0, workflow_runs: [] } } });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId)).toEqual({ status: "pending" });
+  });
+
+  // The match is on the whole id after the repo name, so the tail of another run's id is not that run.
+  it("does not take a run whose id only ends like the one asked for", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: runsFixture } });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId.slice(1))).toEqual({ status: "pending" });
+  });
+
+  it("is pending with the run URL while the run is in progress, without asking for artifacts", async () => {
+    const mock = stubGitHub({ [RUNS_PATH]: { body: runsInProgressFixture } });
+
+    expect(await findDraft(TOKEN, FAILED.requestId)).toEqual({ status: "pending", runUrl: FAILED.url });
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["queued", "waiting", "requested", "pending"])("is pending with the run URL while the run is %s", async (status) => {
+    const [run] = runsInProgressFixture.workflow_runs;
+    stubGitHub({ [RUNS_PATH]: { body: { workflow_runs: [{ ...run, status }] } } });
+
+    expect(await findDraft(TOKEN, FAILED.requestId)).toEqual({ status: "pending", runUrl: FAILED.url });
+  });
+
+  it("fails with the run URL and the conclusion when the run finished without an artifact", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: runsFixture }, [artifactsPath(FAILED.id)]: { body: artifactsEmptyFixture } });
+    const result = await findDraft(TOKEN, FAILED.requestId);
+
+    expect(result).toMatchObject({ status: "failed", runUrl: FAILED.url });
+    expect((result as { reason: string }).reason).toContain("failure");
+  });
+
+  // A second dispatch for the same repo cancels the first run (the Task 12 spike), so a cancelled run is an ordinary failure.
+  it("fails the same way for a cancelled run", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: runsFixture }, [artifactsPath(CANCELLED.id)]: { body: artifactsEmptyFixture } });
+    const result = await findDraft(TOKEN, CANCELLED.requestId);
+
+    expect(result).toMatchObject({ status: "failed", runUrl: CANCELLED.url });
+    expect((result as { reason: string }).reason).toContain("cancelled");
+  });
+
+  it("fails when a successful run has no artifact", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: runsFixture }, [artifactsPath(SUCCESS.id)]: { body: artifactsEmptyFixture } });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId)).toMatchObject({ status: "failed", runUrl: SUCCESS.url });
+  });
+
+  it("ignores an artifact with another name and one that has expired, and downloads neither", async () => {
+    const mock = stubGitHub({
+      [RUNS_PATH]: { body: runsFixture },
+      [artifactsPath(SUCCESS.id)]: {
+        body: { artifacts: [{ ...ARTIFACT, name: "draft-other.json" }, { ...ARTIFACT, id: 2, expired: true }, { ...ARTIFACT, id: 3, name: `draft-${SUCCESS.requestId}` }] },
+      },
+    });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId)).toMatchObject({ status: "failed", runUrl: SUCCESS.url });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each<[string, Record<string, unknown>, RegExp]>([
+    ["no name", { name: undefined }, /name/],
+    ["an empty tagline", { tagline: "" }, /tagline/],
+    ["no description", { description: undefined }, /description/],
+    ["a tech list with a number in it", { tech: ["C++", 5] }, /tech/],
+  ])("fails with the run URL, naming the field, when the artifact has %s", async (_, change, field) => {
+    stubGitHub({
+      [RUNS_PATH]: { body: runsFixture },
+      [artifactsPath(SUCCESS.id)]: { body: artifactsFixture },
+      [downloadPath(ARTIFACT.id)]: { body: { ...draftArtifactFixture, ...change } },
+    });
+    const result = await findDraft(TOKEN, SUCCESS.requestId);
+
+    expect(result).toMatchObject({ status: "failed", runUrl: SUCCESS.url });
+    expect((result as { reason: string }).reason).toMatch(field);
+  });
+
+  it.each<[string, unknown]>([
+    ["an array", [draftArtifactFixture]],
+    ["null", null],
+    ["a string", "draft"],
+  ])("fails when the artifact is %s instead of a draft", async (_, body) => {
+    stubGitHub({
+      [RUNS_PATH]: { body: runsFixture },
+      [artifactsPath(SUCCESS.id)]: { body: artifactsFixture },
+      [downloadPath(ARTIFACT.id)]: { body },
+    });
+
+    expect(await findDraft(TOKEN, SUCCESS.requestId)).toMatchObject({ status: "failed", runUrl: SUCCESS.url });
+  });
+
+  it.each<[string, Record<string, Reply>]>([
+    ["the runs list", { [RUNS_PATH]: { status: 502, body: "bad gateway" } }],
+    ["the artifacts list", { [RUNS_PATH]: { body: runsFixture }, [artifactsPath(SUCCESS.id)]: { status: 502, body: "bad gateway" } }],
+    [
+      "the download",
+      { [RUNS_PATH]: { body: runsFixture }, [artifactsPath(SUCCESS.id)]: { body: artifactsFixture }, [downloadPath(ARTIFACT.id)]: { status: 502, body: "bad gateway" } },
+    ],
+  ])("throws a GitHubError when GitHub fails on %s, so the caller can poll again", async (_, routes) => {
+    stubGitHub(routes);
+    const error = await findDraft(TOKEN, SUCCESS.requestId).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GitHubError);
+    expect((error as GitHubError).status).toBe(502);
+  });
+
+  it.each<[string, unknown]>([
+    ["no workflow_runs", {}],
+    ["workflow_runs that isn't a list", { workflow_runs: "none" }],
+    ["a body that isn't an object", null],
+  ])("rejects a runs answer with %s", async (_, body) => {
+    stubGitHub({ [RUNS_PATH]: { body } });
+
+    await expect(findDraft(TOKEN, SUCCESS.requestId)).rejects.toThrow(/workflow_runs/);
+  });
+
+  it("rejects an artifacts answer with no artifacts list", async () => {
+    stubGitHub({ [RUNS_PATH]: { body: runsFixture }, [artifactsPath(SUCCESS.id)]: { body: {} } });
+
+    await expect(findDraft(TOKEN, SUCCESS.requestId)).rejects.toThrow(/artifacts/);
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ["no id", { id: undefined }],
+    ["no html_url", { html_url: undefined }],
+    ["no status", { status: undefined }],
+  ])("rejects the matching run when it has %s", async (_, change) => {
+    stubGitHub({ [RUNS_PATH]: { body: { workflow_runs: [{ ...runsFixture.workflow_runs[2], ...change }] } } });
+
+    await expect(findDraft(TOKEN, SUCCESS.requestId)).rejects.toThrow(/run/);
   });
 });
