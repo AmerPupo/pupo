@@ -71,11 +71,14 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CLONE_DIR: ${{ runner.temp }}/clone
         # shortcut: jiti is only a transitive dependency (eslint, vitest, tailwind), so if it disappears add tsx as a devDependency
-        run: node_modules/.bin/jiti scripts/draft.ts
+        run: |
+          node_modules/.bin/jiti scripts/draft.ts
+          mv draft.json "draft-$REQUEST_ID.json"
 
+      # archive: false uploads the plain file, so the API hands back JSON and the admin needs no unzip. The artifact is named after the file.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: draft-${{ inputs.request_id }}
-          path: draft.json
+          path: draft-${{ inputs.request_id }}.json
+          archive: false
           retention-days: 1
           if-no-files-found: error
