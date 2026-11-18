@@ -2,13 +2,11 @@ import { randomUUID } from "node:crypto";
 import { generateDraft, type Draft, type DraftReply } from "@/lib/admin/claude";
 import { parseDraftRequest, type DraftRequest } from "@/lib/admin/draftRequest";
 import { cloneRepo, listRepos, removeClone, type Repo } from "@/lib/admin/github";
+import { messageOf, reply } from "@/lib/admin/http";
 import { localOnly } from "@/lib/admin/origin";
 import { dispatchDraft, findDraft, GitHubError, listRepos as listRemoteRepos } from "@/lib/admin/remote";
 import { isRemote, remoteGate } from "@/lib/admin/session";
 import { isHttpUrl, isValidSlug } from "@/lib/projects";
-
-const reply = (status: number, error: string) => Response.json({ error }, { status });
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // The same check the workflow makes of its request_id input.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

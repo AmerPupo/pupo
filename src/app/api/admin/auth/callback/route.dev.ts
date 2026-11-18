@@ -1,10 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { OWNER } from "@/lib/admin/github";
+import { messageOf, reply } from "@/lib/admin/http";
 import { gh } from "@/lib/admin/remote";
 import { cookieHeader, isRemote, readCookie, sealSession, SESSION_COOKIE, SESSION_MS, STATE_COOKIE } from "@/lib/admin/session";
-
-const reply = (status: number, error: string) => Response.json({ error }, { status });
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function sameState(a: string, b: string): boolean {
   const x = Buffer.from(a);

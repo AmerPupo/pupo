@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { reply } from "./http";
 
 export type Session = { login: string; token: string; exp: number };
 
@@ -57,13 +58,11 @@ export function readCookie(header: string | null, name: string): string | undefi
 export const cookieHeader = (name: string, value: string, maxAgeSeconds: number) =>
   `${name}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 
-const deny = (status: number, error: string) => Response.json({ error }, { status });
-
 // The 403 to return unless a browser sent this write from a page on this site, or null. No session is needed, so sign-out can use it alone.
 export function thisSiteOnly(request: Request): Response | null {
   const host = request.headers.get("host");
   if (host !== null && request.headers.get("origin") === `https://${host}`) return null;
-  return deny(403, "Admin writes must come from a page on this site.");
+  return reply(403, "Admin writes must come from a page on this site.");
 }
 
 // The gate in front of every remote admin route: the error to return, or the user's GitHub token.
@@ -74,5 +73,5 @@ export function remoteGate(request: Request, { write }: { write: boolean }): Res
     if (forbidden) return forbidden;
   }
   const session = openSession(readCookie(request.headers.get("cookie"), SESSION_COOKIE));
-  return session ? session.token : deny(401, "Sign in with GitHub first.");
+  return session ? session.token : reply(401, "Sign in with GitHub first.");
 }

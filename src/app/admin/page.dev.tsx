@@ -3,12 +3,11 @@ import { notFound } from "next/navigation";
 import { AdminApp } from "@/components/admin/AdminApp";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
 import { listRepos, type Repo } from "@/lib/admin/github";
+import { messageOf } from "@/lib/admin/http";
 import { isLocalHost } from "@/lib/admin/origin";
 import { GitHubError, listRepos as listRemoteRepos, readProjectsFile } from "@/lib/admin/remote";
 import { isRemote, openSession, readCookie, SESSION_COOKIE } from "@/lib/admin/session";
 import { readProjects, type Project } from "@/lib/projects";
-
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function LoadError({ error }: { error: string }) {
   return (

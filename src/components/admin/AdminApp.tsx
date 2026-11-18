@@ -4,6 +4,7 @@ import { useState, type ChangeEvent } from "react";
 import { putProjects, requestDraft } from "@/components/admin/api";
 import { PRIMARY, SECONDARY } from "@/components/buttonStyles";
 import type { Repo } from "@/lib/admin/github";
+import { messageOf } from "@/lib/admin/http";
 import { HOME_LIMIT, moveProject, shownOnHome, upsertProject } from "@/lib/admin/order";
 import type { Project } from "@/lib/projects";
 
@@ -23,8 +24,6 @@ const DISABLED = "disabled:pointer-events-none disabled:opacity-40 aria-disabled
 // The editable fields of a Project, as the text the inputs hold.
 type Form = { name: string; tagline: string; description: string; tech: string; demoUrl: string };
 type Message = { slug: string; text: string; error: boolean };
-
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const toForm = (project: Project): Form => ({
   name: project.name,

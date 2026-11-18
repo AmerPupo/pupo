@@ -1,13 +1,11 @@
 import { listRepos, type Repo } from "@/lib/admin/github";
+import { messageOf, reply } from "@/lib/admin/http";
 import { localOnly } from "@/lib/admin/origin";
 import { publishedButNotPublic } from "@/lib/admin/publish";
 import { commitProjects, ConflictError, listRepos as listRemoteRepos } from "@/lib/admin/remote";
 import { isRemote, remoteGate } from "@/lib/admin/session";
 import { writeProjects } from "@/lib/admin/writeProjects";
 import { parseProjects, type Project } from "@/lib/projects";
-
-const reply = (status: number, error: string) => Response.json({ error }, { status });
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // Only exactly PUBLIC counts as public.
 const publicNames = (repos: Repo[]) => new Set(repos.filter((repo) => repo.visibility === "PUBLIC").map((repo) => repo.name));
