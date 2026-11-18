@@ -1,6 +1,6 @@
 # pupo
 
-Portfolio site of Amer Jašarević: a static site built with Next.js, React, TypeScript and Tailwind CSS. The home page has a typed name, a short bio, contact links, a CV download and a carousel of projects, and each project has its own page. The projects are data in `content/projects.json`.
+Portfolio site of Amer Jašarević: a static site built with Next.js, React, TypeScript and Tailwind CSS. The home page has the name, a short bio, a CV download and an index of projects, each project has its own page, and every page ends with the contact links. The projects are data in `content/projects.json`.
 
 ## Admin (development only)
 

@@ -1,39 +1,137 @@
 @import "tailwindcss";
 
-/* Design tokens. Dark only: neutral near-black like Vercel, one green accent (swap --color-accent to retheme).
-   Contrast on --color-background: foreground 16.9:1, muted 7.7:1, accent 8.7:1 (WCAG AA needs 4.5:1). */
+/* Design tokens, each as light-dark(light, dark). The page follows the system theme until the header button sets
+   data-theme on <html> (see ThemeToggle and the script in layout.tsx), which pins color-scheme below.
+   The deep green #0f5132 fills buttons and the project-row sweep in both themes; --color-accent is the green for text and lines,
+   which dark mode lightens because #0f5132 text on a dark page is unreadable.
+   Contrast (WCAG AA needs 4.5:1), light / dark: foreground 17.6 / 16.4, muted 5.4 / 7.4, accent 8.7 / 8.6;
+   on --color-card muted 5.0 / 6.8, accent 8.1 / 7.8. On the fill: white 9.4:1, --color-accent-soft 7.0:1. */
 @theme {
-  --color-background: #0a0a0a;
-  --color-foreground: #ededed;
-  --color-muted: #a1a1a1; /* secondary text */
-  --color-card: #111111; /* raised surfaces: project cards, tags */
-  --color-border: #2e2e2e;
-  --color-accent: #22c55e; /* caret, role line, focus ring */
+  --color-background: light-dark(#f7f7f4, #0d0f0e); /* warm off-white and green-tinted black, softer than pure white and black */
+  --color-foreground: light-dark(#111111, #ededed);
+  --color-muted: light-dark(#666666, #a1a1a1); /* secondary text */
+  --color-card: light-dark(#efeeea, #171a18); /* raised surfaces: tags, admin panels */
+  --color-border: light-dark(#e2e0da, #262a27);
+  --color-accent: light-dark(#0f5132, #5fbf8f); /* text, lines, focus ring */
+  --color-accent-fill: #0f5132; /* button and sweep fills, the same in both themes */
+  /* Lighter, not darker, in dark mode so the hover shows on a dark page; white on it is 6.5:1. */
+  --color-accent-fill-hover: light-dark(#0a3b24, #146c43);
+  --color-accent-soft: #cfe3d8; /* secondary text on the fill */
 
-  /* The hero name is 14 monospace characters, 0.6em each. At 9vw that is 76% of the screen width, so it
-     stays inside the page gutters on any phone. No rem floor: one would clip at a larger default font size. */
-  --text-display: min(9vw, 4.5rem);
-  --text-display--line-height: 1.15;
+  /* The hero name wraps per word, so the longest word (9 letters, about 5.2em) must fit: at 13vw that is 68% of the screen.
+     No rem floor: one would clip at a larger default font size. */
+  --text-display: min(13vw, 7.5rem);
+  --text-display--line-height: 1;
 
-  --spacing-section: 6rem; /* vertical rhythm between page sections */
-  --container-page: 64rem; /* page content width */
+  --spacing-section: 7rem; /* vertical rhythm between page sections */
+  --container-page: 72rem; /* page content width */
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-rise: rise 0.9s var(--ease-out-soft) both;
+  --animate-reveal: reveal 1s var(--ease-out-soft) both;
 }
+
+/* Plain keyframes, outside @theme, so they ship even where no animate-* utility names them. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+/* Slides a word up out of its overflow-hidden wrapper. */
+@keyframes reveal {
+  from {
+    transform: translateY(110%);
+  }
+}
+
+/* The cat's speech bubble pops out of its tail corner. */
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(0.5rem);
+  }
+}
+
+@keyframes progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* dark: follows the theme the script in layout.tsx resolved (without JS there is no data-theme, and no working toggle). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Small label over headings and in the meta columns. */
+@utility eyebrow {
+  @apply text-sm font-medium text-muted;
+}
+
+/* An underline that draws in from the left on hover and keyboard focus. It sits under the content box, so padding can
+   enlarge the tap target without moving the line. */
+@utility link-draw {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat content-box;
+  transition:
+    background-size 0.4s var(--ease-out-soft),
+    color 0.3s var(--ease-out-soft);
+
+  &:hover,
+  &:focus-visible {
+    background-size: 100% 1px;
+  }
+}
+
 @layer base {
   :root {
+    color-scheme: light dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
     color-scheme: dark;
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* A faint green glow over the top of the page. Sized in rem, not %, because the body background is laid out over the whole page. */
   body {
-    background: var(--color-background);
+    --glow: light-dark(rgb(178 222 196 / 0.45), rgb(95 191 143 / 0.13)); /* pale mint on light: a dark tint reads as grey there */
+    background:
+      radial-gradient(70rem 36rem at 50% -12rem, var(--glow), transparent) no-repeat,
+      var(--color-background);
     color: var(--color-foreground);
+  }
+
+  /* Film grain over the whole viewport, behind the content: grey fractal noise from an inline SVG. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: var(--color-accent-fill);
+    color: #fff;
   }
 
   :focus-visible {
@@ -42,46 +140,33 @@
   }
 }
 
-/* Typewriter: pure CSS, so the full name is already in the HTML (readable without JS) and
-   shows at once under prefers-reduced-motion. It needs a monospace font (1ch = one character),
-   and <Typewriter> sets --chars to the character count. */
-@keyframes type {
-  from {
-    width: 0;
-  }
-  to {
-    width: calc(var(--chars) * 1ch);
-  }
-}
-
-@keyframes caret {
-  from {
-    border-right-color: var(--color-accent);
-  }
-  50%,
-  to {
-    border-right-color: transparent;
-  }
-}
-
+/* Scroll-driven effects, CSS only. Browsers without scroll timelines (Firefox today) show everything at rest. */
 @layer components {
-  .typewriter {
-    display: inline-block;
-    box-sizing: content-box;
-    max-width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-    vertical-align: bottom; /* overflow:hidden would otherwise move the baseline to the bottom edge */
-    font-family: var(--font-mono);
-    border-right: 0.08em solid transparent; /* the caret: only the animation makes it visible */
-    animation:
-      type 1.4s steps(var(--chars), end) 0.4s backwards,
-      caret 0.8s step-end 5; /* 4s of blinking, then gone: nothing blinks past 5s (WCAG 2.2.2) */
+  .scroll-progress {
+    display: none;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .typewriter {
-      animation: none;
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .scroll-progress {
+        display: block;
+        transform-origin: left;
+        animation: progress linear both;
+        animation-timeline: scroll(root);
+      }
+
+      .reveal-on-scroll {
+        animation: rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 70%;
+      }
+
+      .pop-on-scroll {
+        transform-origin: bottom left;
+        animation: pop linear both;
+        animation-timeline: view();
+        animation-range: entry 40% cover 35%;
+      }
     }
   }
 }
